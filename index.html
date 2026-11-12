@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Swap n Add" />
+  <title>Swap n Add</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="app-shell">
+    <!-- Top Header & Controls Bar -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-badge" aria-hidden="true">⇄</span>
+        <div>
+          <h1 class="brand-title">Swap n Add</h1>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="restartBtn" class="icon-btn icon-btn--accent icon-btn--only" type="button" aria-label="New Game"
+          title="Start a new 10-round game">
+          <svg viewBox="0 0 24 24" class="icon-btn__svg" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 10-Round Scoreboard -->
+    <section class="scoreboard-section" aria-label="10-round scoreboard">
+      <ol id="scoreboardTrack" class="scoreboard-track">
+        <!-- 10 round slots populated by game.js -->
+      </ol>
+    </section>
+
+    <!-- Main Addition Stage -->
+    <main class="stage-card">
+      <div class="stage-equation-pane">
+        <!-- Equation Row -->
+        <div class="equation-area" aria-live="polite">
+          <div id="leftCard" class="number-card number-card--blue">
+            <span id="leftDigit" class="number-digit">3</span>
+          </div>
+
+          <div id="plusSymbol" class="operator-symbol" aria-hidden="true">+</div>
+
+          <div id="rightCard" class="number-card number-card--coral">
+            <span id="rightDigit" class="number-digit">5</span>
+          </div>
+
+          <div class="operator-symbol" aria-hidden="true">=</div>
+
+          <div id="answerCard" class="answer-card">
+            <span id="answerText" class="answer-text">?</span>
+          </div>
+        </div>
+
+        <!-- Feedback Toast inside Stage (reserved height prevents layout shift) -->
+        <div class="feedback-slot">
+          <div id="feedbackBanner" class="feedback-banner is-hidden" aria-live="assertive"></div>
+        </div>
+      </div>
+
+      <!-- Number Pad Controls -->
+      <div class="controls-bar">
+        <div id="numpad" class="numpad" role="group" aria-label="Number pad">
+          <button class="numpad-btn" type="button" data-digit="1">1</button>
+          <button class="numpad-btn" type="button" data-digit="2">2</button>
+          <button class="numpad-btn" type="button" data-digit="3">3</button>
+          <button class="numpad-btn" type="button" data-digit="4">4</button>
+          <button class="numpad-btn" type="button" data-digit="5">5</button>
+          <button class="numpad-btn" type="button" data-digit="6">6</button>
+          <button class="numpad-btn" type="button" data-digit="7">7</button>
+          <button class="numpad-btn" type="button" data-digit="8">8</button>
+          <button class="numpad-btn" type="button" data-digit="9">9</button>
+          <button id="backspaceBtn" class="numpad-btn numpad-btn--backspace" type="button" aria-label="Backspace"
+            title="Backspace">⌫</button>
+          <button class="numpad-btn" type="button" data-digit="0">0</button>
+          <button id="submitBtn" class="numpad-btn numpad-btn--submit" type="button" aria-label="Submit answer"
+            title="Submit">Submit</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Subtle Control Reference Footer -->
+    <footer class="controls-footer">
+      <span><strong>Step 1:</strong> Tap answer &amp; <strong>Submit</strong> to swap</span>
+      <span class="footer-sep" aria-hidden="true">•</span>
+      <span><strong>Step 2:</strong> Tap answer again &amp; <strong>Submit</strong></span>
+    </footer>
+  </div>
+
+  <!-- End of 10 Rounds Summary Modal -->
+  <div id="summaryOverlay" class="summary-overlay is-hidden" role="dialog" aria-modal="true"
+    aria-labelledby="summaryTitle">
+    <div class="summary-modal">
+      <div class="summary-trophy" aria-hidden="true">★</div>
+      <h2 id="summaryTitle" class="summary-title">Great Job!</h2>
+      <p id="summarySubtitle" class="summary-subtitle">You completed all 10 rounds!</p>
+
+      <div class="summary-score-box">
+        <span id="summaryScoreNumber" class="summary-score-number">0 / 10</span>
+        <span class="summary-score-caption">Order doesn't change the sum: <strong>x + y = y + x</strong></span>
+      </div>
+
+      <ul id="summaryList" class="summary-list">
+        <!-- 10 round recap items populated by game.js -->
+      </ul>
+
+      <button id="playAgainBtn" class="action-btn action-btn--swap summary-play-btn" type="button">
+        <span>Play Another 10 Rounds</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Celebration Particle Layer -->
+  <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
+
+  <script src="game.js"></script>
+</body>
+
+</html>
