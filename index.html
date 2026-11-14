@@ -3,16 +3,27 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Swap n Add" />
-  <title>Swap n Add</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b1120" />
+  <title>Swap n Add - Commutative Addition Math Game</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
   <div class="app-shell">
+    <!-- Orientation tip (only visible on mobile portrait) -->
+    <div id="orientationTip" class="orientation-tip" aria-hidden="true">
+      <span class="orientation-tip__icon">↻</span>
+      <span>Rotate iPad to landscape for optimal horizontal layout</span>
+    </div>
+
     <!-- Top Header & Controls Bar -->
     <header class="top-bar">
       <div class="brand">
@@ -23,6 +34,20 @@
       </div>
 
       <div class="top-actions">
+        <button id="soundBtn" class="icon-btn icon-btn--accent icon-btn--only" type="button" aria-label="Toggle Sound"
+          title="Toggle sound effects">
+          <svg id="soundIconOn" viewBox="0 0 24 24" class="icon-btn__svg" aria-hidden="true">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          <svg id="soundIconOff" viewBox="0 0 24 24" class="icon-btn__svg is-hidden" aria-hidden="true">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        </button>
+
         <button id="restartBtn" class="icon-btn icon-btn--accent icon-btn--only" type="button" aria-label="New Game"
           title="Start a new 10-round game">
           <svg viewBox="0 0 24 24" class="icon-btn__svg" aria-hidden="true">
@@ -89,7 +114,7 @@
       </div>
     </main>
 
-    <!-- Subtle Control Reference Footer -->
+    <!-- Control Reference Footer -->
     <footer class="controls-footer">
       <span><strong>Step 1:</strong> Tap answer &amp; <strong>Submit</strong> to swap</span>
       <span class="footer-sep" aria-hidden="true">•</span>

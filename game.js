@@ -2,10 +2,10 @@
   'use strict';
 
   const TOTAL_ROUNDS = 10;
-  const SWAP_DURATION_MS = 1599;
-  const FEEDBACK_DURATION_MS = 1450;
-  const CORRECT_FEEDBACK_DURATION_MS = 3263;
-  const GAME_OVER_INPUT_GUARD_MS = 750;
+  const SWAP_DURATION_MS = 1480;
+  const FEEDBACK_DURATION_MS = 1500;
+  const CORRECT_FEEDBACK_DURATION_MS = 2600;
+  const GAME_OVER_INPUT_GUARD_MS = 600;
 
   const SVG_TICK = '<svg viewBox="0 0 24 24" class="score-slot__mark" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>';
   const SVG_CROSS = '<svg viewBox="0 0 24 24" class="score-slot__mark" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>';
@@ -37,6 +37,9 @@
 
   // DOM Elements
   const dom = {
+    soundBtn: document.getElementById('soundBtn'),
+    soundIconOn: document.getElementById('soundIconOn'),
+    soundIconOff: document.getElementById('soundIconOff'),
     restartBtn: document.getElementById('restartBtn'),
 
     scoreboardTrack: document.getElementById('scoreboardTrack'),
@@ -75,7 +78,42 @@
     activeAnimations: [],
   };
 
+  // Audio State
   let audioCtx = null;
+  let isAudioUnlocked = false;
+  let soundEnabled = true;
+
+  try {
+    const saved = localStorage.getItem('swap_n_add_sound');
+    if (saved !== null) {
+      soundEnabled = saved !== 'false';
+    }
+  } catch {
+    soundEnabled = true;
+  }
+
+  function updateSoundUI() {
+    if (dom.soundIconOn && dom.soundIconOff) {
+      dom.soundIconOn.classList.toggle('is-hidden', !soundEnabled);
+      dom.soundIconOff.classList.toggle('is-hidden', soundEnabled);
+      dom.soundBtn.setAttribute('aria-label', soundEnabled ? 'Mute Sound' : 'Unmute Sound');
+      dom.soundBtn.setAttribute('title', soundEnabled ? 'Sound: On' : 'Sound: Off');
+    }
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    try {
+      localStorage.setItem('swap_n_add_sound', String(soundEnabled));
+    } catch {
+      // LocalStorage may fail in private mode
+    }
+    updateSoundUI();
+    if (soundEnabled) {
+      unlockAudio();
+      playTone(659.25, 0.0, 0.12, 'sine', 0.12);
+    }
+  }
 
   // --- Audio Synthesis (Web Audio API, zero external files) ---
   function getAudioContext() {
@@ -90,7 +128,33 @@
     return audioCtx;
   }
 
+  function unlockAudio() {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    if (!isAudioUnlocked) {
+      try {
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        isAudioUnlocked = true;
+      } catch {
+        // Silently ignore
+      }
+    }
+  }
+
+  // Global unlock listeners for iOS Safari on first user touch anywhere
+  ['touchstart', 'touchend', 'pointerdown', 'keydown'].forEach((evt) => {
+    window.addEventListener(evt, () => unlockAudio(), { once: true, passive: true });
+  });
+
   function playTone(freq, startOffset, duration, type = 'sine', volume = 0.14) {
+    if (!soundEnabled) return;
     const ctx = getAudioContext();
     if (!ctx) return;
 
@@ -355,7 +419,7 @@
     const leftRect = dom.leftCard.getBoundingClientRect();
     const rightRect = dom.rightCard.getBoundingClientRect();
     const dx = rightRect.left - leftRect.left;
-    const arcHeight = Math.min(78, Math.max(46, Math.abs(dx) * 0.24));
+    const arcHeight = Math.min(68, Math.max(38, Math.abs(dx) * 0.22));
 
     dom.leftCard.style.zIndex = '5';
     dom.rightCard.style.zIndex = '2';
@@ -379,7 +443,7 @@
 
     const timing = {
       duration: SWAP_DURATION_MS,
-      easing: 'ease-in-out',
+      easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
       fill: 'forwards',
     };
 
@@ -559,31 +623,32 @@
     }
   }
 
-  // --- Keyboard Input ---
+  // --- Keyboard Input (iPad Smart/Magic Keyboard & Desktop) ---
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
 
     if (e.key >= '0' && e.key <= '9') {
       e.preventDefault();
+      unlockAudio();
       appendDigit(e.key);
     } else if (e.key === 'Backspace') {
       e.preventDefault();
+      unlockAudio();
       handleBackspace();
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      unlockAudio();
       handleSubmit();
     } else if ((e.code === 'Space' || e.key === ' ') && state.phase === 'GAME_OVER') {
       e.preventDefault();
+      unlockAudio();
       handleSubmit();
     }
   });
 
-  // --- Pointer / Touch / Button Controls ---
-  function unlockAudio() {
-    getAudioContext();
-  }
-
+  // --- Pointer / Touch / Button Controls for iPad & Web ---
   function bindCleanClick(btn, handler) {
+    if (!btn) return;
     btn.addEventListener('click', (e) => {
       e.currentTarget.blur();
       unlockAudio();
@@ -592,34 +657,45 @@
   }
 
   function bindInstantTap(btn, handler) {
+    if (!btn) return;
+
     btn.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (btn.disabled) return;
-      e.preventDefault();
-      btn.blur();
+      btn.classList.add('is-active');
       unlockAudio();
       handler();
     });
 
-    // Support keyboard activation (Enter/Space when focused) without double-firing pointer taps
+    const removeActive = () => btn.classList.remove('is-active');
+    btn.addEventListener('pointerup', removeActive);
+    btn.addEventListener('pointercancel', removeActive);
+    btn.addEventListener('pointerleave', removeActive);
+
+    // Support keyboard activation (Enter/Space when focused)
     btn.addEventListener('click', (e) => {
-      if (e.detail !== 0 || btn.disabled) return;
-      e.currentTarget.blur();
-      unlockAudio();
-      handler();
+      if (e.detail === 0 && !btn.disabled) {
+        btn.blur();
+        unlockAudio();
+        handler();
+      }
     });
   }
 
+  // Bind Numpad Buttons
   dom.digitButtons.forEach((btn) => {
     bindInstantTap(btn, () => appendDigit(btn.dataset.digit));
   });
   bindInstantTap(dom.backspaceBtn, () => handleBackspace());
   bindInstantTap(dom.submitBtn, () => handleSubmit());
+
+  // Bind Top Bar Actions
+  bindCleanClick(dom.soundBtn, () => toggleSound());
   bindCleanClick(dom.restartBtn, () => startNewGame());
   bindCleanClick(dom.playAgainBtn, () => startNewGame());
 
-  // Initialize Game
+  // Initialize
+  updateSoundUI();
   startNewGame();
 })();
-

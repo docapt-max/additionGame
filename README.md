@@ -1,27 +1,77 @@
-# Swap & Add! (`x + y = y + x`)
+# ⇄ Swap n Add! (`x + y = y + x`)
 
-An interactive addition game designed to help children understand the commutative property of addition (`x + y = y + x`) through visual swapping animations and a 10-round tick/cross scoreboard.
+A fast, tactile, visual addition game designed for children to explore and master the **commutative property of addition** (`x + y = y + x`).
 
-## How to Start
+Built entirely with pure **HTML5, CSS3, and JavaScript** — zero frameworks, zero external dependencies, zero backend required. Optimized for **10.2-inch iPads in horizontal (landscape) mode** and modern web browsers.
 
-Double-click **`play.bat`** (recommended — starts a local server at http://127.0.0.1:8765/ so your browser enables Gamepad support), or open `index.html` directly if playing with keyboard/mouse only.
+---
 
-## Controls
+## 🚀 How to Publish on GitHub Pages
 
-Each of the **10 rounds** works in two quick steps:
+Because this repository contains only static web files (`index.html`, `styles.css`, `game.js`), it can be published directly to GitHub Pages in seconds:
 
-1. **Swap the two numbers** (`x + y` animates smoothly into `y + x`):
-   - Keyboard: **`Space`**
-   - Gamepad: **`RT`** (Right Trigger) or **`RB`** (Right Bumper)
-2. **Score the child's answer**:
-   - **Correct (`✓`)**: **`Space`** on keyboard, or **`RT`** / **`RB`** on gamepad
-   - **Incorrect (`✗`)**: **`X`** key on keyboard, or **`B`** button on gamepad
+1. Push your changes to your GitHub repository (branch `master` or `main`).
+2. Go to your repository on GitHub and click **Settings** (tab at the top).
+3. In the left sidebar, click **Pages**.
+4. Under **Build and deployment**:
+   - **Source**: Select `Deploy from a branch`
+   - **Branch**: Select `master` (or `main`) and folder `/(root)`
+   - Click **Save**.
+5. Wait 30–60 seconds. Your game is live at:
+   `https://<your-username>.github.io/<repo-name>/`
+   *(e.g., `https://docapt-max.github.io/additionGame/`)*
 
-## Features
+> [!TIP]
+> The repository includes `.nojekyll` to bypass Jekyll build steps, ensuring instant and seamless deployment on GitHub Pages.
 
-- 10 distinct single-digit addition rounds (`1–9`, `x ≠ y`) per game
-- Color-coded number cards with visual counting dots that travel together during the swap animation
-- 10-round scoreboard tracking every round with green tick (`✓`) and red cross (`✗`) marks
-- End-of-game summary showing all 10 equations and total score
-- Toggleable counting dots (`Dots: On/Off`) and synthesized sound effects (`Sound: On/Off`)
+---
 
+## 📱 Playing on iPad (10.2" Horizontal Mode)
+
+1. Open your GitHub Pages link in **Safari** on your iPad.
+2. Hold your iPad in **horizontal (landscape) mode**.
+3. **Optional (Full-Screen App Experience):**
+   - Tap Safari's **Share** button (the square with an arrow pointing up).
+   - Tap **"Add to Home Screen"**.
+   - Tap **Add**.
+   - Launch the game from your Home Screen icon to play in immersive full-screen without any browser address bar!
+
+---
+
+## 🎮 How to Play
+
+Each game consists of **10 distinct addition rounds**:
+
+1. **Step 1:** Look at the two numbers (e.g., `3 + 5`). Tap the digits on the numpad and press **Submit**.
+2. **The Swap Animation:** When correct, the cards animate in an arc and swap places (`3 + 5` becomes `5 + 3`), visually demonstrating that order does not change the sum.
+3. **Step 2:** Enter the sum again for the swapped equation and press **Submit**.
+4. **Score & Feedback:**
+   - Correct answers earn a green tick (`✓`), celebration confetti, a thumbs-up smiley, and chime sounds.
+   - Mistakes trigger gentle feedback (`✗`) with a recap.
+5. **Round 10 Summary:** Review your score out of 10 and all 10 equations. Tap **"Play Another 10 Rounds"** to play again with a fresh set of shuffled numbers!
+
+---
+
+## 🕹️ Controls
+
+- **Touchscreen (iPad / Tablet):** Tap on-screen numpad digits, `⌫` (backspace), and `Submit`.
+- **Keyboard (iPad Magic Keyboard / Desktop):**
+  - Digits: `0` – `9`
+  - Backspace: `Backspace`
+  - Submit: `Enter`
+  - Quick Restart on game-over: `Space`
+- **Sound Toggle (🔊 / 🔇):** Tap the speaker button in the top-right corner to toggle sound effects on or off. State is saved automatically.
+
+---
+
+## 📂 Project Structure
+
+```text
+├── index.html           # Main semantic web page & PWA tags
+├── styles.css           # Responsive layout optimized for iPad 10.2" landscape
+├── game.js              # Pure client-side game engine & Web Audio sound
+├── icon.svg             # Vector app icon & touch icon
+├── manifest.webmanifest # PWA configuration for iPad Home Screen
+├── .nojekyll            # Ensures direct static hosting on GitHub Pages
+└── .gitignore           # Prevents OS or editor clutter
+```

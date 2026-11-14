@@ -1,0 +1,18 @@
+{
+  "name": "Swap & Add - Math Game",
+  "short_name": "Swap & Add",
+  "description": "Fun commutative property addition game for iPad and web",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
