@@ -84,12 +84,12 @@
   const state = {
     rounds: [],
     currentRoundIndex: 0,
-    phase: 'AWAITING_FIRST_ANSWER', // AWAITING_FIRST_ANSWER | ANIMATING_SWAP | AWAITING_SECOND_ANSWER | ROUND_FEEDBACK | GAME_OVER
+    phase: 'AWAITING_FIRST_ANSWER',
     typedAnswer: '',
     feedbackTimerId: null,
     gameOverEnteredAt: 0,
     activeAnimations: [],
-    inputMode: 'write', // 'write' | 'keypad'
+    inputMode: 'write',
   };
 
   // Audio State
@@ -428,12 +428,10 @@
       ),
     ];
 
-    // Classify a single digit from a list of stroke points
     function recognizeSingleDigit(rawPoints) {
       if (!rawPoints || rawPoints.length < 2) return null;
       const norm = normalize(rawPoints);
 
-      // Narrow aspect ratio is overwhelmingly digit 1
       if (norm.aspect < 0.36) {
         return 1;
       }
@@ -447,7 +445,6 @@
         for (let v = 0; v < variants.length; v += 1) {
           let dist = pointCloudDist(resampled, variants[v]);
 
-          // Topological & Geometric Boosts / Penalties
           if (d === 0) {
             const gap = Math.hypot(norm.pts[0].x - norm.pts[norm.pts.length - 1].x, norm.pts[0].y - norm.pts[norm.pts.length - 1].y);
             if (gap < 0.28) {
@@ -462,21 +459,18 @@
               dist += 0.12;
             }
           } else if (d === 2) {
-            // Digit 2 has a horizontal base line at the bottom
             const bottomPts = resampled.filter((p) => p.y > 0.85);
             if (bottomPts.length >= 3) {
               const baseWidth = Math.max(...bottomPts.map((p) => p.x)) - Math.min(...bottomPts.map((p) => p.x));
               if (baseWidth > 0.45) dist -= 0.05;
             }
           } else if (d === 3) {
-            // Digit 3 has a middle indentation on the left
             const midPts = resampled.filter((p) => p.y >= 0.38 && p.y <= 0.62);
             if (midPts.length > 0) {
               const midMinX = Math.min(...midPts.map((p) => p.x));
               if (midMinX < 0.6) dist -= 0.04;
             }
           } else if (d === 7) {
-            // Digit 7 has a wide top bar
             const topPts = resampled.filter((p) => p.y < 0.24);
             if (topPts.length >= 3) {
               const topW = Math.max(...topPts.map((p) => p.x)) - Math.min(...topPts.map((p) => p.x));
@@ -495,7 +489,6 @@
       return bestDigit;
     }
 
-    // Split all canvas strokes into 1 or 2 digit clusters
     function clusterStrokes(strokes) {
       if (!strokes || strokes.length === 0) return [];
       if (strokes.length === 1) return [strokes];
@@ -531,7 +524,6 @@
       const totalW = totalMaxX - totalMinX;
       const totalH = totalMaxY - totalMinY;
 
-      // If the overall width is narrow, it is a single digit
       if (totalW < 0.55 * totalH) {
         return [strokes];
       }
@@ -570,7 +562,6 @@
     function recognizeStrokes(strokes) {
       if (!strokes || strokes.length === 0) return null;
 
-      // Filter out tiny accidental dots (e.g. wrist rest)
       const validStrokes = strokes.filter((s) => {
         if (s.length < 2) return false;
         let len = 0;
@@ -615,6 +606,7 @@
   let canvasStrokes = [];
   let currentStroke = [];
   let isDrawing = false;
+  let activePenId = null;
   let cssCanvasWidth = 320;
   let cssCanvasHeight = 180;
 
@@ -628,15 +620,21 @@
 
     canvas.addEventListener('pointerdown', (e) => {
       if (!isInputPhase()) return;
-      if (!e.isPrimary) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+      // Apple Pencil palm rejection: if drawing with stylus, ignore secondary touch pointers
+      if (e.pointerType === 'pen') {
+        activePenId = e.pointerId;
+      } else if (activePenId !== null && e.pointerType === 'touch') {
+        return;
+      }
 
       e.preventDefault();
       unlockAudio();
       try {
         canvas.setPointerCapture(e.pointerId);
       } catch {
-        // Pointer capture fallback
+        // Fallback
       }
 
       isDrawing = true;
@@ -646,7 +644,6 @@
 
       dom.canvasPlaceholder.classList.add('is-hidden');
 
-      // Draw initial round point
       canvasCtx.beginPath();
       canvasCtx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
       canvasCtx.fillStyle = '#38bdf8';
@@ -655,6 +652,8 @@
 
     canvas.addEventListener('pointermove', (e) => {
       if (!isDrawing) return;
+      if (activePenId !== null && e.pointerType === 'touch') return;
+
       e.preventDefault();
 
       const rect = canvas.getBoundingClientRect();
@@ -681,6 +680,10 @@
 
     const finishStroke = (e) => {
       if (!isDrawing) return;
+      if (e.pointerId === activePenId) {
+        activePenId = null;
+      }
+
       isDrawing = false;
       try {
         canvas.releasePointerCapture(e.pointerId);

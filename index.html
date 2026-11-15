@@ -105,32 +105,42 @@
           </button>
         </div>
 
-        <!-- Handwriting Canvas Box -->
+        <!-- Handwriting Canvas Box (Palm-Safe Layout: buttons placed strictly ABOVE canvas) -->
         <div id="drawPanel" class="drawing-panel" role="region" aria-label="Handwriting canvas">
+          <!-- Top Control Header: Safe from resting palm -->
           <div class="drawing-header">
-            <span class="drawing-title">Write your answer</span>
-            <button id="clearCanvasBtn" class="canvas-action-btn" type="button" aria-label="Clear drawing" title="Clear canvas">
-              <svg viewBox="0 0 24 24" class="canvas-btn-icon" aria-hidden="true">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-              <span>Clear</span>
-            </button>
+            <div class="recognition-badge" title="Number read by iPad">
+              <span class="recognition-label">Read:</span>
+              <span id="recognizedValue" class="recognition-val">—</span>
+            </div>
+
+            <div class="drawing-header-actions">
+              <button id="clearCanvasBtn" class="canvas-action-btn canvas-action-btn--clear" type="button" aria-label="Clear drawing" title="Clear canvas">
+                <svg viewBox="0 0 24 24" class="canvas-btn-icon" aria-hidden="true">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span>Clear</span>
+              </button>
+
+              <button id="canvasSubmitBtn" class="canvas-action-btn canvas-action-btn--submit" type="button" aria-label="Submit answer" title="Check your answer">
+                <svg viewBox="0 0 24 24" class="canvas-btn-icon" aria-hidden="true">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                <span>Check</span>
+              </button>
+            </div>
           </div>
 
+          <!-- Canvas Surface: Wide writing area with zero buttons below -->
           <div class="canvas-container">
             <canvas id="writeCanvas" class="write-canvas"></canvas>
             <div class="canvas-guideline" aria-hidden="true"></div>
-            <div id="canvasPlaceholder" class="canvas-placeholder">Write number here with finger or Pencil</div>
+            <div id="canvasPlaceholder" class="canvas-placeholder">Write your number here with finger or Pencil</div>
           </div>
 
-          <div class="drawing-footer">
-            <div class="recognition-badge">
-              <span class="recognition-label">Recognized:</span>
-              <span id="recognizedValue" class="recognition-val">—</span>
-            </div>
-            <button id="canvasSubmitBtn" class="canvas-submit-btn" type="button" aria-label="Submit answer" title="Check your answer">
-              Check Answer
-            </button>
+          <!-- Palm Guard Notice -->
+          <div class="canvas-palm-guard" aria-hidden="true">
+            <span>✍️ Palm safe • Buttons are safely above canvas</span>
           </div>
         </div>
 
@@ -156,9 +166,9 @@
 
     <!-- Control Reference Footer -->
     <footer class="controls-footer">
-      <span><strong>Step 1:</strong> Write answer &amp; <strong>Check</strong> to swap</span>
+      <span><strong>Step 1:</strong> Write answer &amp; tap <strong>Check</strong> above</span>
       <span class="footer-sep" aria-hidden="true">•</span>
-      <span><strong>Step 2:</strong> Write answer again &amp; <strong>Check</strong></span>
+      <span><strong>Step 2:</strong> Write swapped answer &amp; tap <strong>Check</strong></span>
     </footer>
   </div>
 

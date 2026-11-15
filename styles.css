@@ -527,7 +527,7 @@ button {
 }
 
 /* =========================================================
-   Handwriting Canvas Panel
+   Handwriting Canvas Panel (Palm-Safe)
    ========================================================= */
 .drawing-panel {
   display: flex;
@@ -537,39 +537,67 @@ button {
   background: var(--surface-soft);
   border: 2px solid var(--border);
   border-radius: 22px;
-  padding: 12px 14px;
-  gap: 9px;
+  padding: 10px 14px 8px;
+  gap: 8px;
   box-shadow: 0 8px 24px -10px rgba(2, 6, 23, 0.55);
 }
 
+/* Top Header Bar: Placed strictly ABOVE canvas away from palm */
 .drawing-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
-.drawing-title {
-  font-size: 0.88rem;
-  font-weight: 800;
+.drawing-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.recognition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 11px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+}
+
+.recognition-label {
+  font-size: 0.74rem;
+  font-weight: 700;
   color: var(--muted);
-  letter-spacing: 0.01em;
+}
+
+.recognition-val {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--pen-ink);
+  min-width: 20px;
+  text-align: center;
+  line-height: 1;
 }
 
 .canvas-action-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 5px 12px;
-  border-radius: 10px;
+  padding: 6px 12px;
+  border-radius: 11px;
   border: 1.5px solid var(--border);
   background: var(--surface);
   color: var(--ink);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 0.1s ease, border-color 0.15s ease, background-color 0.15s ease;
+  transition: transform 0.1s ease, border-color 0.15s ease, background-color 0.15s ease, filter 0.15s ease;
 }
 
 .canvas-action-btn:active {
@@ -577,12 +605,49 @@ button {
   background: #273549;
 }
 
+.canvas-action-btn--clear {
+  color: var(--muted);
+}
+
+.canvas-action-btn--clear:hover {
+  color: var(--ink);
+  border-color: #475569;
+}
+
+.canvas-action-btn--submit {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border-color: rgba(129, 140, 248, 0.65);
+  color: #ffffff;
+  padding: 6px 14px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px -3px rgba(79, 70, 229, 0.55);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .canvas-action-btn--submit:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4338ca, #4f46e5);
+    filter: brightness(1.08);
+  }
+}
+
+.canvas-action-btn--submit:active:not(:disabled) {
+  transform: scale(0.94);
+  filter: brightness(1.15);
+}
+
+.canvas-action-btn--submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
 .canvas-btn-icon {
   width: 14px;
   height: 14px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
+  stroke-width: 2.3;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -591,7 +656,7 @@ button {
 .canvas-container {
   position: relative;
   width: 100%;
-  height: clamp(160px, 24vh, 205px);
+  height: clamp(170px, 26vh, 220px);
   background: #0f172a;
   border: 2px solid #334155;
   border-radius: 16px;
@@ -624,7 +689,7 @@ button {
   position: absolute;
   left: 0;
   right: 0;
-  top: clamp(40px, 6vh, 55px);
+  top: clamp(40px, 6.5vh, 60px);
   height: 1.5px;
   background: rgba(148, 163, 184, 0.2);
   pointer-events: none;
@@ -650,75 +715,16 @@ button {
   pointer-events: none;
 }
 
-/* Drawing Footer: Recognized Badge + Check Answer Button */
-.drawing-footer {
+.canvas-palm-guard {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.recognition-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  flex-shrink: 0;
-}
-
-.recognition-label {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.recognition-val {
-  font-size: 1.18rem;
-  font-weight: 900;
-  color: var(--pen-ink);
-  min-width: 22px;
-  text-align: center;
-  line-height: 1;
-}
-
-.canvas-submit-btn {
-  flex: 1;
-  height: 44px;
-  border-radius: 13px;
-  border: 1.5px solid rgba(129, 140, 248, 0.55);
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.5);
-  touch-action: manipulation;
-  transition: transform 0.08s ease, filter 0.15s ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .canvas-submit-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4338ca, #4f46e5);
-    filter: brightness(1.06);
-  }
-}
-
-.canvas-submit-btn:active:not(:disabled) {
-  filter: brightness(1.12);
-  transform: scale(0.95);
-}
-
-.canvas-submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  filter: grayscale(0.5);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  padding: 2px 0 0;
+  text-align: center;
+  user-select: none;
 }
 
 /* Number Pad Controls (alternative view) */
@@ -1155,12 +1161,12 @@ button {
   .drawing-panel {
     max-width: none;
     width: 100%;
-    padding: 10px 14px;
+    padding: 10px 14px 8px;
     gap: 8px;
   }
 
   .canvas-container {
-    height: clamp(150px, 23vh, 195px);
+    height: clamp(170px, 27vh, 225px);
   }
 
   .numpad {
@@ -1219,6 +1225,6 @@ button {
   }
 
   .canvas-container {
-    height: 160px;
+    height: 175px;
   }
 }
