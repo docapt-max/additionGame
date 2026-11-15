@@ -39,6 +39,7 @@
   --accent: #818cf8;
   --accent-dark: #a5b4fc;
   --gold: #f59e0b;
+  --pen-ink: #38bdf8;
 
   --shadow-lg: 0 24px 50px -15px rgba(2, 6, 23, 0.65), 0 4px 16px -4px rgba(2, 6, 23, 0.45);
   --shadow-card: 0 14px 28px -10px rgba(2, 6, 23, 0.6);
@@ -320,13 +321,13 @@ button {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 28px;
-  padding: clamp(14px, 2vh, 26px) clamp(16px, 2.5vw, 32px);
+  padding: clamp(12px, 1.8vh, 24px) clamp(16px, 2.4vw, 32px);
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(12px, 2vh, 20px);
+  gap: clamp(10px, 1.8vh, 18px);
   position: relative;
   overflow: visible;
 }
@@ -347,13 +348,13 @@ button {
   align-items: center;
   justify-content: center;
   gap: clamp(10px, 1.8vw, 24px);
-  padding: clamp(6px, 1.2vh, 14px) 0;
+  padding: clamp(4px, 1vh, 12px) 0;
   position: relative;
 }
 
 .number-card {
-  width: clamp(100px, 16vw, 168px);
-  min-height: clamp(112px, 17vh, 168px);
+  width: clamp(96px, 15vw, 164px);
+  min-height: clamp(110px, 16.5vh, 164px);
   border-radius: 24px;
   border: 3.5px solid transparent;
   padding: 10px;
@@ -380,7 +381,7 @@ button {
 }
 
 .number-digit {
-  font-size: clamp(3.4rem, 6.5vw, 5.2rem);
+  font-size: clamp(3.2rem, 6.2vw, 5rem);
   font-weight: 900;
   line-height: 1;
 }
@@ -399,8 +400,8 @@ button {
 }
 
 .answer-card {
-  width: clamp(100px, 15vw, 156px);
-  min-height: clamp(112px, 17vh, 168px);
+  width: clamp(96px, 14vw, 154px);
+  min-height: clamp(110px, 16.5vh, 164px);
   border-radius: 24px;
   border: 3.5px dashed #334155;
   background: var(--surface-soft);
@@ -413,7 +414,7 @@ button {
 }
 
 .answer-text {
-  font-size: clamp(3.2rem, 6vw, 4.8rem);
+  font-size: clamp(3rem, 5.8vw, 4.6rem);
   font-weight: 900;
   line-height: 1;
 }
@@ -449,7 +450,7 @@ button {
 
 /* Feedback Banner */
 .feedback-slot {
-  min-height: 44px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -459,7 +460,7 @@ button {
 .feedback-banner {
   padding: 8px 18px;
   border-radius: 14px;
-  font-size: clamp(0.98rem, 1.6vw, 1.2rem);
+  font-size: clamp(0.96rem, 1.5vw, 1.18rem);
   font-weight: 800;
   display: inline-flex;
   align-items: center;
@@ -481,14 +482,246 @@ button {
   border: 1.5px solid var(--warn-border);
 }
 
-/* Number Pad Controls */
+/* Controls Bar (Handwriting & Keypad) */
 .controls-bar {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
 }
 
+/* Input Mode Switch (Write vs Keypad) */
+.input-mode-switch {
+  display: inline-flex;
+  background: var(--surface-soft);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.mode-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 14px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn:active {
+  transform: scale(0.96);
+}
+
+.mode-btn--active {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border);
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.35);
+}
+
+/* =========================================================
+   Handwriting Canvas Panel
+   ========================================================= */
+.drawing-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface-soft);
+  border: 2px solid var(--border);
+  border-radius: 22px;
+  padding: 12px 14px;
+  gap: 9px;
+  box-shadow: 0 8px 24px -10px rgba(2, 6, 23, 0.55);
+}
+
+.drawing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawing-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.canvas-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.canvas-action-btn:active {
+  transform: scale(0.94);
+  background: #273549;
+}
+
+.canvas-btn-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Canvas Container */
+.canvas-container {
+  position: relative;
+  width: 100%;
+  height: clamp(160px, 24vh, 205px);
+  background: #0f172a;
+  border: 2px solid #334155;
+  border-radius: 16px;
+  overflow: hidden;
+  touch-action: none;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.write-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Subtle school notebook guidelines */
+.canvas-guideline {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 1px;
+  border-top: 1.5px dashed rgba(148, 163, 184, 0.16);
+  pointer-events: none;
+}
+
+.canvas-guideline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: clamp(40px, 6vh, 55px);
+  height: 1.5px;
+  background: rgba(148, 163, 184, 0.2);
+  pointer-events: none;
+}
+
+.canvas-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 16px;
+  transition: opacity 0.2s ease;
+}
+
+.canvas-placeholder.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Drawing Footer: Recognized Badge + Check Answer Button */
+.drawing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recognition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+}
+
+.recognition-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.recognition-val {
+  font-size: 1.18rem;
+  font-weight: 900;
+  color: var(--pen-ink);
+  min-width: 22px;
+  text-align: center;
+  line-height: 1;
+}
+
+.canvas-submit-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 13px;
+  border: 1.5px solid rgba(129, 140, 248, 0.55);
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.5);
+  touch-action: manipulation;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .canvas-submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4338ca, #4f46e5);
+    filter: brightness(1.06);
+  }
+}
+
+.canvas-submit-btn:active:not(:disabled) {
+  filter: brightness(1.12);
+  transform: scale(0.95);
+}
+
+.canvas-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+/* Number Pad Controls (alternative view) */
 .numpad {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -883,8 +1116,8 @@ button {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: clamp(20px, 3vw, 42px);
-    padding: clamp(14px, 2vh, 26px) clamp(20px, 2.8vw, 38px);
+    gap: clamp(16px, 2.5vw, 36px);
+    padding: clamp(12px, 1.8vh, 22px) clamp(18px, 2.6vw, 36px);
     overflow: visible;
   }
 
@@ -895,47 +1128,59 @@ button {
   }
 
   .equation-area {
-    gap: clamp(12px, 2vw, 24px);
+    gap: clamp(10px, 1.8vw, 22px);
   }
 
   .number-card {
-    width: clamp(118px, 13vw, 164px);
-    min-height: clamp(124px, 19vh, 172px);
+    width: clamp(114px, 12.5vw, 156px);
+    min-height: clamp(120px, 18vh, 168px);
   }
 
   .answer-card {
-    width: clamp(112px, 12.2vw, 154px);
-    min-height: clamp(124px, 19vh, 172px);
+    width: clamp(108px, 11.8vw, 148px);
+    min-height: clamp(120px, 18vh, 168px);
   }
 
   .number-digit,
   .answer-text {
-    font-size: clamp(3.6rem, 5.4vw, 5.1rem);
+    font-size: clamp(3.4rem, 5vw, 4.8rem);
   }
 
   .controls-bar {
-    width: auto;
+    width: clamp(290px, 28vw, 360px);
     flex: 0 0 auto;
+    align-items: center;
+  }
+
+  .drawing-panel {
+    max-width: none;
+    width: 100%;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .canvas-container {
+    height: clamp(150px, 23vh, 195px);
   }
 
   .numpad {
-    width: clamp(270px, 25vw, 316px);
+    width: 100%;
     max-width: none;
     gap: clamp(8px, 1.2vh, 11px);
   }
 
   .numpad-btn {
-    height: clamp(52px, 7.8vh, 66px);
-    border-radius: 17px;
-    font-size: clamp(1.4rem, 2vw, 1.62rem);
+    height: clamp(48px, 7vh, 60px);
+    border-radius: 16px;
+    font-size: clamp(1.35rem, 1.8vw, 1.55rem);
   }
 
   .numpad-btn--backspace {
-    font-size: clamp(1.3rem, 1.8vw, 1.48rem);
+    font-size: clamp(1.25rem, 1.6vw, 1.42rem);
   }
 
   .numpad-btn--submit {
-    font-size: clamp(1.02rem, 1.3vw, 1.14rem);
+    font-size: clamp(1rem, 1.2vw, 1.1rem);
   }
 
   .controls-footer {
@@ -959,17 +1204,21 @@ button {
 
   .number-card,
   .answer-card {
-    width: clamp(82px, 24vw, 118px);
-    min-height: 118px;
+    width: clamp(80px, 23vw, 112px);
+    min-height: 112px;
     border-radius: 20px;
   }
 
   .number-digit,
   .answer-text {
-    font-size: 2.6rem;
+    font-size: 2.5rem;
   }
 
   .operator-symbol {
-    font-size: 2rem;
+    font-size: 1.9rem;
+  }
+
+  .canvas-container {
+    height: 160px;
   }
 }

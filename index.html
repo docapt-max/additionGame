@@ -93,9 +93,49 @@
         </div>
       </div>
 
-      <!-- Number Pad Controls -->
+      <!-- Controls Bar: Handwriting Canvas Box (Default) + Mode Switch -->
       <div class="controls-bar">
-        <div id="numpad" class="numpad" role="group" aria-label="Number pad">
+        <!-- Input Mode Switch -->
+        <div class="input-mode-switch" role="tablist" aria-label="Input Mode">
+          <button id="modeWriteBtn" class="mode-btn mode-btn--active" type="button" role="tab" aria-selected="true" title="Write with finger or Pencil">
+            ✏️ Write
+          </button>
+          <button id="modePadBtn" class="mode-btn" type="button" role="tab" aria-selected="false" title="Tap numbers on screen">
+            🔢 Keypad
+          </button>
+        </div>
+
+        <!-- Handwriting Canvas Box -->
+        <div id="drawPanel" class="drawing-panel" role="region" aria-label="Handwriting canvas">
+          <div class="drawing-header">
+            <span class="drawing-title">Write your answer</span>
+            <button id="clearCanvasBtn" class="canvas-action-btn" type="button" aria-label="Clear drawing" title="Clear canvas">
+              <svg viewBox="0 0 24 24" class="canvas-btn-icon" aria-hidden="true">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              <span>Clear</span>
+            </button>
+          </div>
+
+          <div class="canvas-container">
+            <canvas id="writeCanvas" class="write-canvas"></canvas>
+            <div class="canvas-guideline" aria-hidden="true"></div>
+            <div id="canvasPlaceholder" class="canvas-placeholder">Write number here with finger or Pencil</div>
+          </div>
+
+          <div class="drawing-footer">
+            <div class="recognition-badge">
+              <span class="recognition-label">Recognized:</span>
+              <span id="recognizedValue" class="recognition-val">—</span>
+            </div>
+            <button id="canvasSubmitBtn" class="canvas-submit-btn" type="button" aria-label="Submit answer" title="Check your answer">
+              Check Answer
+            </button>
+          </div>
+        </div>
+
+        <!-- Number Pad Controls (Alternative View) -->
+        <div id="numpad" class="numpad is-hidden" role="group" aria-label="Number pad">
           <button class="numpad-btn" type="button" data-digit="1">1</button>
           <button class="numpad-btn" type="button" data-digit="2">2</button>
           <button class="numpad-btn" type="button" data-digit="3">3</button>
@@ -116,9 +156,9 @@
 
     <!-- Control Reference Footer -->
     <footer class="controls-footer">
-      <span><strong>Step 1:</strong> Tap answer &amp; <strong>Submit</strong> to swap</span>
+      <span><strong>Step 1:</strong> Write answer &amp; <strong>Check</strong> to swap</span>
       <span class="footer-sep" aria-hidden="true">•</span>
-      <span><strong>Step 2:</strong> Tap answer again &amp; <strong>Submit</strong></span>
+      <span><strong>Step 2:</strong> Write answer again &amp; <strong>Check</strong></span>
     </footer>
   </div>
 

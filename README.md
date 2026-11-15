@@ -2,6 +2,8 @@
 
 A fast, tactile, visual addition game designed for children to explore and master the **commutative property of addition** (`x + y = y + x`).
 
+Featuring an **interactive handwriting recognition box** where children can write their answer directly on screen with a finger or Apple Pencil, and the iPad automatically recognizes the number and scores it!
+
 Built entirely with pure **HTML5, CSS3, and JavaScript** — zero frameworks, zero external dependencies, zero backend required. Optimized for **10.2-inch iPads in horizontal (landscape) mode** and modern web browsers.
 
 ---
@@ -10,7 +12,10 @@ Built entirely with pure **HTML5, CSS3, and JavaScript** — zero frameworks, ze
 
 Because this repository contains only static web files (`index.html`, `styles.css`, `game.js`), it can be published directly to GitHub Pages in seconds:
 
-1. Push your changes to your GitHub repository (branch `master` or `main`).
+1. Push your changes to your GitHub repository (branch `master` or `main`):
+   ```bash
+   git push origin master
+   ```
 2. Go to your repository on GitHub and click **Settings** (tab at the top).
 3. In the left sidebar, click **Pages**.
 4. Under **Build and deployment**:
@@ -42,34 +47,40 @@ Because this repository contains only static web files (`index.html`, `styles.cs
 
 Each game consists of **10 distinct addition rounds**:
 
-1. **Step 1:** Look at the two numbers (e.g., `3 + 5`). Tap the digits on the numpad and press **Submit**.
-2. **The Swap Animation:** When correct, the cards animate in an arc and swap places (`3 + 5` becomes `5 + 3`), visually demonstrating that order does not change the sum.
-3. **Step 2:** Enter the sum again for the swapped equation and press **Submit**.
-4. **Score & Feedback:**
+1. **Step 1:** Look at the two numbers (e.g., `3 + 5`). Write your answer in the **handwriting box** using your finger or Apple Pencil (e.g., write `8`).
+2. **Recognition Preview:** The iPad instantly recognizes the number, shows `Recognized: 8`, and puts it in the answer slot. Tap **Check Answer** (or press Enter).
+3. **The Swap Animation:** When correct, the cards animate in an arc and swap places (`3 + 5` becomes `5 + 3`), visually demonstrating that order does not change the sum.
+4. **Step 2:** The canvas clears automatically. Write the answer again for the swapped equation and tap **Check Answer**.
+5. **Score & Feedback:**
    - Correct answers earn a green tick (`✓`), celebration confetti, a thumbs-up smiley, and chime sounds.
    - Mistakes trigger gentle feedback (`✗`) with a recap.
-5. **Round 10 Summary:** Review your score out of 10 and all 10 equations. Tap **"Play Another 10 Rounds"** to play again with a fresh set of shuffled numbers!
+6. **Round 10 Summary:** Review your score out of 10 and all 10 equations. Tap **"Play Another 10 Rounds"** to play again with a fresh set of shuffled numbers!
 
 ---
 
-## 🕹️ Controls
+## 🕹️ Controls & Features
 
-- **Touchscreen (iPad / Tablet):** Tap on-screen numpad digits, `⌫` (backspace), and `Submit`.
-- **Keyboard (iPad Magic Keyboard / Desktop):**
+- **✏️ Handwriting Box (Default):**
+  - Draw numbers with your finger or stylus on the canvas.
+  - Supports both single digits (e.g., `8`) and two-digit numbers (e.g., `12`, `15`) with automatic stroke clustering.
+  - **`Clear`** button: Erase and redraw anytime.
+  - **`Check Answer`** button: Evaluates your answer.
+- **🔢 Keypad Mode:** Tap the `🔢 Keypad` toggle switch at any time if you prefer an on-screen number pad.
+- **⌨️ Keyboard (iPad Magic Keyboard / Desktop):**
   - Digits: `0` – `9`
   - Backspace: `Backspace`
   - Submit: `Enter`
   - Quick Restart on game-over: `Space`
-- **Sound Toggle (🔊 / 🔇):** Tap the speaker button in the top-right corner to toggle sound effects on or off. State is saved automatically.
+- **🔊 Sound Toggle:** Tap the speaker icon in the top header to mute or unmute sound effects.
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-├── index.html           # Main semantic web page & PWA tags
+├── index.html           # Semantic web page with handwriting canvas & PWA tags
 ├── styles.css           # Responsive layout optimized for iPad 10.2" landscape
-├── game.js              # Pure client-side game engine & Web Audio sound
+├── game.js              # Pure client-side game engine & handwriting recognizer
 ├── icon.svg             # Vector app icon & touch icon
 ├── manifest.webmanifest # PWA configuration for iPad Home Screen
 ├── .nojekyll            # Ensures direct static hosting on GitHub Pages

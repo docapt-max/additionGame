@@ -53,6 +53,19 @@
     answerText: document.getElementById('answerText'),
     feedbackBanner: document.getElementById('feedbackBanner'),
 
+    // Mode Switch
+    modeWriteBtn: document.getElementById('modeWriteBtn'),
+    modePadBtn: document.getElementById('modePadBtn'),
+
+    // Handwriting Canvas
+    drawPanel: document.getElementById('drawPanel'),
+    writeCanvas: document.getElementById('writeCanvas'),
+    canvasPlaceholder: document.getElementById('canvasPlaceholder'),
+    clearCanvasBtn: document.getElementById('clearCanvasBtn'),
+    recognizedValue: document.getElementById('recognizedValue'),
+    canvasSubmitBtn: document.getElementById('canvasSubmitBtn'),
+
+    // Number Pad
     numpad: document.getElementById('numpad'),
     digitButtons: Array.from(document.querySelectorAll('[data-digit]')),
     backspaceBtn: document.getElementById('backspaceBtn'),
@@ -76,6 +89,7 @@
     feedbackTimerId: null,
     gameOverEnteredAt: 0,
     activeAnimations: [],
+    inputMode: 'write', // 'write' | 'keypad'
   };
 
   // Audio State
@@ -106,7 +120,7 @@
     try {
       localStorage.setItem('swap_n_add_sound', String(soundEnabled));
     } catch {
-      // LocalStorage may fail in private mode
+      // Ignore
     }
     updateSoundUI();
     if (soundEnabled) {
@@ -115,7 +129,6 @@
     }
   }
 
-  // --- Audio Synthesis (Web Audio API, zero external files) ---
   function getAudioContext() {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
@@ -143,12 +156,11 @@
         src.start(0);
         isAudioUnlocked = true;
       } catch {
-        // Silently ignore
+        // Ignore
       }
     }
   }
 
-  // Global unlock listeners for iOS Safari on first user touch anywhere
   ['touchstart', 'touchend', 'pointerdown', 'keydown'].forEach((evt) => {
     window.addEventListener(evt, () => unlockAudio(), { once: true, passive: true });
   });
@@ -176,9 +188,9 @@
   }
 
   function playCorrectSound() {
-    playTone(523.25, 0.0, 0.16, 'sine', 0.14); // C5
-    playTone(659.25, 0.09, 0.18, 'sine', 0.14); // E5
-    playTone(783.99, 0.18, 0.28, 'sine', 0.16); // G5
+    playTone(523.25, 0.0, 0.16, 'sine', 0.14);
+    playTone(659.25, 0.09, 0.18, 'sine', 0.14);
+    playTone(783.99, 0.18, 0.28, 'sine', 0.16);
   }
 
   function playWrongSound() {
@@ -202,7 +214,6 @@
       }
     }
 
-    // Fisher-Yates shuffle
     for (let i = pairs.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
@@ -219,9 +230,542 @@
         swapped: false,
         firstAnswer: null,
         secondAnswer: null,
-        result: null, // 'tick' | 'cross' | null
+        result: null,
       };
     });
+  }
+
+  // =========================================================
+  // Handwriting Digit Recognition Engine ($P+ Point-Cloud & Topology)
+  // =========================================================
+  const recognizer = (() => {
+    function ls(a, b, n) {
+      const res = [];
+      const denom = Math.max(1, n - 1);
+      for (let i = 0; i < n; i += 1) {
+        res.push(a + (b - a) * i / denom);
+      }
+      return res;
+    }
+
+    function resample(points, n = 32) {
+      if (!points || points.length <= 1) {
+        return points && points.length === 1 ? Array(n).fill(points[0]) : Array(n).fill({ x: 0.5, y: 0.5 });
+      }
+      let totalLen = 0;
+      for (let i = 0; i < points.length - 1; i += 1) {
+        totalLen += Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y);
+      }
+      if (totalLen === 0) {
+        return Array(n).fill(points[0]);
+      }
+      const interval = totalLen / (n - 1);
+      const res = [points[0]];
+      let d = 0;
+      const pts = points.map((p) => ({ x: p.x, y: p.y }));
+      let i = 0;
+      while (i < pts.length - 1 && res.length < n) {
+        const dx = pts[i + 1].x - pts[i].x;
+        const dy = pts[i + 1].y - pts[i].y;
+        const seg = Math.hypot(dx, dy);
+        if (d + seg >= interval) {
+          const t = (interval - d) / seg;
+          const nx = pts[i].x + t * dx;
+          const ny = pts[i].y + t * dy;
+          res.push({ x: nx, y: ny });
+          pts[i] = { x: nx, y: ny };
+          d = 0;
+        } else {
+          d += seg;
+          i += 1;
+        }
+      }
+      while (res.length < n) {
+        res.push(pts[pts.length - 1]);
+      }
+      return res;
+    }
+
+    function normalize(points) {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      points.forEach((p) => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      });
+      const w = Math.max(maxX - minX, 1e-4);
+      const h = Math.max(maxY - minY, 1e-4);
+      return {
+        pts: points.map((p) => ({ x: (p.x - minX) / w, y: (p.y - minY) / h })),
+        w,
+        h,
+        aspect: w / h,
+        minX,
+        maxX,
+        minY,
+        maxY,
+      };
+    }
+
+    function pointCloudDist(pts1, pts2) {
+      let d1 = 0;
+      for (let i = 0; i < pts1.length; i += 1) {
+        let minD = Infinity;
+        for (let j = 0; j < pts2.length; j += 1) {
+          const d = (pts1[i].x - pts2[j].x) ** 2 + (pts1[i].y - pts2[j].y) ** 2;
+          if (d < minD) minD = d;
+        }
+        d1 += Math.sqrt(minD);
+      }
+      let d2 = 0;
+      for (let j = 0; j < pts2.length; j += 1) {
+        let minD = Infinity;
+        for (let i = 0; i < pts1.length; i += 1) {
+          const d = (pts2[j].x - pts1[i].x) ** 2 + (pts2[j].y - pts1[i].y) ** 2;
+          if (d < minD) minD = d;
+        }
+        d2 += Math.sqrt(minD);
+      }
+      return (d1 + d2) / (pts1.length + pts2.length);
+    }
+
+    // Prototype Templates for Digits 0 - 9
+    const templates = {};
+
+    // 0: Oval
+    templates[0] = [
+      resample(ls(0, 2 * Math.PI, 32).map((t) => ({ x: 0.5 + 0.38 * Math.sin(t), y: 0.5 - 0.44 * Math.cos(t) }))),
+    ];
+
+    // 1: Straight down & with serif
+    templates[1] = [
+      resample(ls(0, 1, 32).map((t) => ({ x: 0.5, y: 0.05 + 0.9 * t }))),
+      resample(
+        ls(0, 1, 8).map((t) => ({ x: 0.35 + 0.15 * t, y: 0.25 - 0.2 * t })).concat(
+          ls(0, 1, 24).map((t) => ({ x: 0.5, y: 0.05 + 0.9 * t }))
+        )
+      ),
+    ];
+
+    // 2: Top curve, diagonal down, flat horizontal bottom
+    templates[2] = [
+      resample(
+        ls(-Math.PI * 0.8, Math.PI * 0.2, 12).map((t) => ({ x: 0.5 + 0.32 * Math.cos(t), y: 0.24 + 0.2 * Math.sin(t) })).concat(
+          ls(0, 1, 10).map((t) => ({ x: 0.8 - 0.65 * t, y: 0.42 + 0.5 * t })),
+          ls(0, 1, 10).map((t) => ({ x: 0.15 + 0.72 * t, y: 0.94 }))
+        )
+      ),
+    ];
+
+    // 3: Top arc, middle cusp, bottom arc
+    templates[3] = [
+      resample(
+        ls(0, 1, 8).map((t) => ({ x: 0.2 + 0.6 * t, y: 0.1 })).concat(
+          ls(0, 1, 8).map((t) => ({ x: 0.8 - 0.35 * t, y: 0.1 + 0.4 * t })),
+          ls(0, 1, 8).map((t) => ({ x: 0.45 + 0.4 * t, y: 0.5 + 0.2 * t })),
+          ls(0, 1, 8).map((t) => ({ x: 0.85 - 0.65 * t, y: 0.7 + 0.24 * t }))
+        )
+      ),
+    ];
+
+    // 4: L-shape and vertical cross down
+    templates[4] = [
+      resample(
+        ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.55 * t, y: 0.08 + 0.55 * t })).concat(
+          ls(0, 1, 10).map((t) => ({ x: 0.2 + 0.68 * t, y: 0.63 })),
+          ls(0, 1, 10).map((t) => ({ x: 0.72, y: 0.15 + 0.8 * t }))
+        )
+      ),
+    ];
+
+    // 5: Top bar, vertical stem, round bottom belly
+    templates[5] = [
+      resample(
+        ls(0, 1, 8).map((t) => ({ x: 0.78 - 0.55 * t, y: 0.1 })).concat(
+          ls(0, 1, 8).map((t) => ({ x: 0.23, y: 0.1 + 0.38 * t })),
+          ls(-Math.PI * 0.5, Math.PI * 0.75, 16).map((t) => ({ x: 0.5 + 0.35 * Math.cos(t), y: 0.7 + 0.23 * Math.sin(t) }))
+        )
+      ),
+    ];
+
+    // 6: Starts top-right, curves down into bottom loop
+    templates[6] = [
+      resample(
+        ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.52 * t, y: 0.1 + 0.5 * t })).concat(
+          ls(0, 2 * Math.PI, 20).map((t) => ({ x: 0.5 + 0.32 * Math.cos(t), y: 0.68 + 0.24 * Math.sin(t) }))
+        )
+      ),
+    ];
+
+    // 7: Top bar and diagonal down
+    templates[7] = [
+      resample(
+        ls(0, 1, 12).map((t) => ({ x: 0.15 + 0.72 * t, y: 0.1 })).concat(
+          ls(0, 1, 20).map((t) => ({ x: 0.87 - 0.55 * t, y: 0.1 + 0.85 * t }))
+        )
+      ),
+    ];
+
+    // 8: Stacked loops / figure-8
+    templates[8] = [
+      resample(
+        ls(0, 2 * Math.PI, 16).map((t) => ({ x: 0.5 + 0.26 * Math.sin(t), y: 0.28 - 0.22 * Math.cos(t) })).concat(
+          ls(0, 2 * Math.PI, 16).map((t) => ({ x: 0.5 - 0.3 * Math.sin(t), y: 0.72 + 0.24 * Math.cos(t) }))
+        )
+      ),
+    ];
+
+    // 9: Top loop and stem down
+    templates[9] = [
+      resample(
+        ls(0, 2 * Math.PI, 20).map((t) => ({ x: 0.5 + 0.3 * Math.cos(t), y: 0.32 + 0.24 * Math.sin(t) })).concat(
+          ls(0, 1, 12).map((t) => ({ x: 0.8, y: 0.32 + 0.63 * t }))
+        )
+      ),
+    ];
+
+    // Classify a single digit from a list of stroke points
+    function recognizeSingleDigit(rawPoints) {
+      if (!rawPoints || rawPoints.length < 2) return null;
+      const norm = normalize(rawPoints);
+
+      // Narrow aspect ratio is overwhelmingly digit 1
+      if (norm.aspect < 0.36) {
+        return 1;
+      }
+
+      const resampled = resample(norm.pts, 32);
+      let bestDigit = null;
+      let minScore = Infinity;
+
+      for (let d = 0; d <= 9; d += 1) {
+        const variants = templates[d] || [];
+        for (let v = 0; v < variants.length; v += 1) {
+          let dist = pointCloudDist(resampled, variants[v]);
+
+          // Topological & Geometric Boosts / Penalties
+          if (d === 0) {
+            const gap = Math.hypot(norm.pts[0].x - norm.pts[norm.pts.length - 1].x, norm.pts[0].y - norm.pts[norm.pts.length - 1].y);
+            if (gap < 0.28) {
+              dist -= 0.04;
+            } else {
+              dist += 0.09;
+            }
+          } else if (d === 1) {
+            if (norm.aspect < 0.42) {
+              dist -= 0.06;
+            } else {
+              dist += 0.12;
+            }
+          } else if (d === 2) {
+            // Digit 2 has a horizontal base line at the bottom
+            const bottomPts = resampled.filter((p) => p.y > 0.85);
+            if (bottomPts.length >= 3) {
+              const baseWidth = Math.max(...bottomPts.map((p) => p.x)) - Math.min(...bottomPts.map((p) => p.x));
+              if (baseWidth > 0.45) dist -= 0.05;
+            }
+          } else if (d === 3) {
+            // Digit 3 has a middle indentation on the left
+            const midPts = resampled.filter((p) => p.y >= 0.38 && p.y <= 0.62);
+            if (midPts.length > 0) {
+              const midMinX = Math.min(...midPts.map((p) => p.x));
+              if (midMinX < 0.6) dist -= 0.04;
+            }
+          } else if (d === 7) {
+            // Digit 7 has a wide top bar
+            const topPts = resampled.filter((p) => p.y < 0.24);
+            if (topPts.length >= 3) {
+              const topW = Math.max(...topPts.map((p) => p.x)) - Math.min(...topPts.map((p) => p.x));
+              if (topW > 0.5) dist -= 0.05;
+              else dist += 0.07;
+            }
+          }
+
+          if (dist < minScore) {
+            minScore = dist;
+            bestDigit = d;
+          }
+        }
+      }
+
+      return bestDigit;
+    }
+
+    // Split all canvas strokes into 1 or 2 digit clusters
+    function clusterStrokes(strokes) {
+      if (!strokes || strokes.length === 0) return [];
+      if (strokes.length === 1) return [strokes];
+
+      const strokeBoxes = strokes.map((s, idx) => {
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        s.forEach((p) => {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+        });
+        return {
+          idx,
+          stroke: s,
+          minX,
+          maxX,
+          minY,
+          maxY,
+          cx: (minX + maxX) / 2,
+          w: maxX - minX,
+          h: maxY - minY,
+        };
+      });
+
+      const totalMinX = Math.min(...strokeBoxes.map((b) => b.minX));
+      const totalMaxX = Math.max(...strokeBoxes.map((b) => b.maxX));
+      const totalMinY = Math.min(...strokeBoxes.map((b) => b.minY));
+      const totalMaxY = Math.max(...strokeBoxes.map((b) => b.maxY));
+      const totalW = totalMaxX - totalMinX;
+      const totalH = totalMaxY - totalMinY;
+
+      // If the overall width is narrow, it is a single digit
+      if (totalW < 0.55 * totalH) {
+        return [strokes];
+      }
+
+      strokeBoxes.sort((a, b) => a.cx - b.cx);
+
+      let bestSplitIdx = -1;
+      let maxGap = -Infinity;
+
+      for (let i = 0; i < strokeBoxes.length - 1; i += 1) {
+        const leftMaxX = Math.max(...strokeBoxes.slice(0, i + 1).map((b) => b.maxX));
+        const rightMinX = Math.min(...strokeBoxes.slice(i + 1).map((b) => b.minX));
+        const gap = rightMinX - leftMaxX;
+        const leftCx = strokeBoxes.slice(0, i + 1).reduce((sum, b) => sum + b.cx, 0) / (i + 1);
+        const rightCx = strokeBoxes.slice(i + 1).reduce((sum, b) => sum + b.cx, 0) / (strokeBoxes.length - i - 1);
+        const centerDist = rightCx - leftCx;
+
+        if (gap > 0 || (gap > -0.25 * totalW && centerDist > 0.32 * totalW)) {
+          const score = gap + centerDist * 0.45;
+          if (score > maxGap) {
+            maxGap = score;
+            bestSplitIdx = i;
+          }
+        }
+      }
+
+      if (bestSplitIdx !== -1 && maxGap > 0.04 * totalW) {
+        const leftStrokes = strokeBoxes.slice(0, bestSplitIdx + 1).map((b) => b.stroke);
+        const rightStrokes = strokeBoxes.slice(bestSplitIdx + 1).map((b) => b.stroke);
+        return [leftStrokes, rightStrokes];
+      }
+
+      return [strokes];
+    }
+
+    function recognizeStrokes(strokes) {
+      if (!strokes || strokes.length === 0) return null;
+
+      // Filter out tiny accidental dots (e.g. wrist rest)
+      const validStrokes = strokes.filter((s) => {
+        if (s.length < 2) return false;
+        let len = 0;
+        for (let i = 0; i < s.length - 1; i += 1) {
+          len += Math.hypot(s[i + 1].x - s[i].x, s[i + 1].y - s[i].y);
+        }
+        return len > 6;
+      });
+
+      if (validStrokes.length === 0) return null;
+
+      const clusters = clusterStrokes(validStrokes);
+
+      if (clusters.length === 1) {
+        const flatPts = clusters[0].flat();
+        const digit = recognizeSingleDigit(flatPts);
+        return digit !== null ? String(digit) : null;
+      }
+
+      if (clusters.length >= 2) {
+        const leftPts = clusters[0].flat();
+        const rightPts = clusters[1].flat();
+        const d1 = recognizeSingleDigit(leftPts);
+        const d2 = recognizeSingleDigit(rightPts);
+        if (d1 !== null && d2 !== null) {
+          return `${d1}${d2}`;
+        }
+        if (d1 !== null) return String(d1);
+        if (d2 !== null) return String(d2);
+      }
+
+      return null;
+    }
+
+    return { recognizeStrokes };
+  })();
+
+  // =========================================================
+  // Handwriting Canvas Setup & Pointer Interaction
+  // =========================================================
+  let canvasCtx = null;
+  let canvasStrokes = [];
+  let currentStroke = [];
+  let isDrawing = false;
+  let cssCanvasWidth = 320;
+  let cssCanvasHeight = 180;
+
+  function initCanvas() {
+    const canvas = dom.writeCanvas;
+    if (!canvas) return;
+
+    canvasCtx = canvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', () => resizeCanvas());
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!isInputPhase()) return;
+      if (!e.isPrimary) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+      e.preventDefault();
+      unlockAudio();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        // Pointer capture fallback
+      }
+
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top, t: performance.now() };
+      currentStroke = [pt];
+
+      dom.canvasPlaceholder.classList.add('is-hidden');
+
+      // Draw initial round point
+      canvasCtx.beginPath();
+      canvasCtx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+      canvasCtx.fillStyle = '#38bdf8';
+      canvasCtx.fill();
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!isDrawing) return;
+      e.preventDefault();
+
+      const rect = canvas.getBoundingClientRect();
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top, t: performance.now() };
+      currentStroke.push(pt);
+
+      if (currentStroke.length >= 2) {
+        const p1 = currentStroke[currentStroke.length - 2];
+        const p2 = currentStroke[currentStroke.length - 1];
+
+        canvasCtx.beginPath();
+        canvasCtx.strokeStyle = '#38bdf8';
+        canvasCtx.lineWidth = 6;
+        canvasCtx.lineCap = 'round';
+        canvasCtx.lineJoin = 'round';
+        canvasCtx.shadowColor = 'rgba(56, 189, 248, 0.45)';
+        canvasCtx.shadowBlur = 4;
+
+        canvasCtx.moveTo(p1.x, p1.y);
+        canvasCtx.lineTo(p2.x, p2.y);
+        canvasCtx.stroke();
+      }
+    });
+
+    const finishStroke = (e) => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // Fallback
+      }
+
+      if (currentStroke.length >= 2) {
+        canvasStrokes.push(currentStroke);
+        currentStroke = [];
+        evaluateHandwriting();
+      }
+    };
+
+    canvas.addEventListener('pointerup', finishStroke);
+    canvas.addEventListener('pointercancel', finishStroke);
+  }
+
+  function resizeCanvas() {
+    const canvas = dom.writeCanvas;
+    if (!canvas || !canvasCtx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    cssCanvasWidth = rect.width || 320;
+    cssCanvasHeight = rect.height || 180;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = cssCanvasWidth * dpr;
+    canvas.height = cssCanvasHeight * dpr;
+
+    canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
+    canvasCtx.scale(dpr, dpr);
+
+    redrawCanvas();
+  }
+
+  function redrawCanvas() {
+    if (!canvasCtx) return;
+    canvasCtx.clearRect(0, 0, cssCanvasWidth, cssCanvasHeight);
+
+    if (canvasStrokes.length === 0) {
+      dom.canvasPlaceholder.classList.remove('is-hidden');
+      return;
+    }
+
+    dom.canvasPlaceholder.classList.add('is-hidden');
+
+    canvasCtx.strokeStyle = '#38bdf8';
+    canvasCtx.lineWidth = 6;
+    canvasCtx.lineCap = 'round';
+    canvasCtx.lineJoin = 'round';
+    canvasCtx.shadowColor = 'rgba(56, 189, 248, 0.45)';
+    canvasCtx.shadowBlur = 4;
+
+    canvasStrokes.forEach((stroke) => {
+      if (stroke.length < 2) return;
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(stroke[0].x, stroke[0].y);
+      for (let i = 1; i < stroke.length; i += 1) {
+        canvasCtx.lineTo(stroke[i].x, stroke[i].y);
+      }
+      canvasCtx.stroke();
+    });
+  }
+
+  function clearCanvas() {
+    canvasStrokes = [];
+    currentStroke = [];
+    if (canvasCtx) {
+      canvasCtx.clearRect(0, 0, cssCanvasWidth, cssCanvasHeight);
+    }
+    dom.canvasPlaceholder.classList.remove('is-hidden');
+    dom.recognizedValue.textContent = '—';
+    state.typedAnswer = '';
+    renderStage();
+  }
+
+  function evaluateHandwriting() {
+    if (!isInputPhase()) return;
+    const recognized = recognizer.recognizeStrokes(canvasStrokes);
+    if (recognized !== null && recognized !== '') {
+      dom.recognizedValue.textContent = recognized;
+      state.typedAnswer = recognized;
+      renderStage();
+    }
   }
 
   // --- Rendering Helpers ---
@@ -287,12 +831,13 @@
       dom.answerText.textContent = '?';
     }
 
-    // Number Pad & Feedback
     const canType = isInputPhase();
     dom.numpad.classList.toggle('numpad--locked', !canType);
     dom.digitButtons.forEach((btn) => { btn.disabled = !canType; });
     dom.backspaceBtn.disabled = !canType;
     dom.submitBtn.disabled = !canType;
+    dom.canvasSubmitBtn.disabled = !canType;
+    dom.clearCanvasBtn.disabled = !canType;
 
     dom.feedbackBanner.classList.add('is-hidden');
     dom.feedbackBanner.classList.remove('feedback-banner--correct', 'feedback-banner--wrong');
@@ -311,12 +856,11 @@
 
   function nudgeAnswerRequired() {
     dom.answerCard.classList.remove('answer-card--nudge');
-    // Force reflow so animation replays cleanly
     void dom.answerCard.offsetWidth;
     dom.answerCard.classList.add('answer-card--nudge');
   }
 
-  // --- Celebration Confetti ---
+  // --- Celebration Confetti & Smileys ---
   function spawnConfetti(showSmiley = false) {
     const colors = ['#2563eb', '#ea580c', '#16a34a', '#f59e0b', '#6366f1', '#ec4899'];
     const rect = dom.answerCard.getBoundingClientRect();
@@ -454,17 +998,17 @@
     try {
       await Promise.all([animLeft.finished, animRight.finished]);
     } catch {
-      // Cancelled by New Game reset
       return;
     }
 
-    // If game was reset mid-flight, stop cleanly
     if (state.phase !== 'ANIMATING_SWAP') return;
 
     round.swapped = true;
     state.phase = 'AWAITING_SECOND_ANSWER';
 
-    // Swap DOM contents and cancel transforms in the same frame so there is zero flicker
+    // Clear canvas so child has a fresh drawing surface for Step 2
+    clearCanvas();
+
     renderStage();
     animLeft.cancel();
     animRight.cancel();
@@ -502,6 +1046,7 @@
         state.currentRoundIndex += 1;
         state.typedAnswer = '';
         state.phase = 'AWAITING_FIRST_ANSWER';
+        clearCanvas();
         renderScoreboard();
         renderStage();
       } else {
@@ -555,7 +1100,7 @@
       try {
         anim.cancel();
       } catch {
-        // Ignore already finished animations
+        // Ignore
       }
     });
     state.activeAnimations = [];
@@ -570,16 +1115,18 @@
     state.typedAnswer = '';
     state.phase = 'AWAITING_FIRST_ANSWER';
 
+    clearCanvas();
     dom.summaryOverlay.classList.add('is-hidden');
     renderScoreboard();
     renderStage();
   }
 
-  // --- Number Pad & Unified Input Handlers ---
+  // --- Input Submission Handlers ---
   function appendDigit(digit) {
     if (!isInputPhase()) return;
     if (state.typedAnswer.length >= 2) return;
     state.typedAnswer = state.typedAnswer === '0' ? digit : `${state.typedAnswer}${digit}`;
+    dom.recognizedValue.textContent = state.typedAnswer;
     renderStage();
   }
 
@@ -587,6 +1134,7 @@
     if (!isInputPhase()) return;
     if (state.typedAnswer.length === 0) return;
     state.typedAnswer = state.typedAnswer.slice(0, -1);
+    dom.recognizedValue.textContent = state.typedAnswer || '—';
     renderStage();
   }
 
@@ -623,7 +1171,26 @@
     }
   }
 
-  // --- Keyboard Input (iPad Smart/Magic Keyboard & Desktop) ---
+  // --- Mode Switching (Handwriting vs Keypad) ---
+  function setInputMode(mode) {
+    state.inputMode = mode;
+    const isWrite = mode === 'write';
+
+    dom.modeWriteBtn.classList.toggle('mode-btn--active', isWrite);
+    dom.modeWriteBtn.setAttribute('aria-selected', String(isWrite));
+
+    dom.modePadBtn.classList.toggle('mode-btn--active', !isWrite);
+    dom.modePadBtn.setAttribute('aria-selected', String(!isWrite));
+
+    dom.drawPanel.classList.toggle('is-hidden', !isWrite);
+    dom.numpad.classList.toggle('is-hidden', isWrite);
+
+    if (isWrite) {
+      setTimeout(() => resizeCanvas(), 50);
+    }
+  }
+
+  // --- Keyboard Input (iPad Magic Keyboard & Desktop) ---
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
 
@@ -646,7 +1213,7 @@
     }
   });
 
-  // --- Pointer / Touch / Button Controls for iPad & Web ---
+  // --- Button Listeners ---
   function bindCleanClick(btn, handler) {
     if (!btn) return;
     btn.addEventListener('click', (e) => {
@@ -673,7 +1240,6 @@
     btn.addEventListener('pointercancel', removeActive);
     btn.addEventListener('pointerleave', removeActive);
 
-    // Support keyboard activation (Enter/Space when focused)
     btn.addEventListener('click', (e) => {
       if (e.detail === 0 && !btn.disabled) {
         btn.blur();
@@ -683,19 +1249,25 @@
     });
   }
 
-  // Bind Numpad Buttons
+  // Bind Buttons
   dom.digitButtons.forEach((btn) => {
     bindInstantTap(btn, () => appendDigit(btn.dataset.digit));
   });
   bindInstantTap(dom.backspaceBtn, () => handleBackspace());
   bindInstantTap(dom.submitBtn, () => handleSubmit());
+  bindInstantTap(dom.canvasSubmitBtn, () => handleSubmit());
 
-  // Bind Top Bar Actions
+  bindCleanClick(dom.clearCanvasBtn, () => clearCanvas());
+  bindCleanClick(dom.modeWriteBtn, () => setInputMode('write'));
+  bindCleanClick(dom.modePadBtn, () => setInputMode('keypad'));
+
   bindCleanClick(dom.soundBtn, () => toggleSound());
   bindCleanClick(dom.restartBtn, () => startNewGame());
   bindCleanClick(dom.playAgainBtn, () => startNewGame());
 
   // Initialize
+  initCanvas();
   updateSoundUI();
+  setInputMode('write');
   startNewGame();
 })();
