@@ -469,14 +469,37 @@
         resampleStrokes([normalizePtsOnly(s5_2_stem_belly), normalizePtsOnly(s5_2_top_bar)], 36),
       ];
 
-      // 6: Upper curve down to bottom loop
-      const pts6_1 = ls(0, 1, 14).map((t) => ({ x: 0.82 - 0.65 * t, y: 0.05 + 0.50 * t })).concat(
-        ls(Math.PI * 0.8, Math.PI * 2.8, 22).map((t) => ({
-          x: 0.50 + 0.38 * Math.cos(t),
-          y: 0.68 + 0.28 * Math.sin(t),
+      // 6: Multi-template 6 (standard curve, center-start, arched-top)
+      // 6A: Standard diagonal curve down-left, circular bottom loop meeting stem at y ~ 0.58
+      const pts6_a = ls(0, 1, 14).map((t) => ({ x: 0.75 - 0.55 * t, y: 0.05 + 0.52 * t })).concat(
+        ls(Math.PI * 0.95, Math.PI * 2.95, 22).map((t) => ({
+          x: 0.50 + 0.34 * Math.cos(t),
+          y: 0.74 + 0.22 * Math.sin(t),
         }))
       );
-      tpls[6] = [resampleSingle(normalizePtsOnly(pts6_1), 36)];
+      // 6B: Arched top from right through apex to bottom loop
+      const pts6_b = ls(0, Math.PI, 14).map((t) => ({
+        x: 0.50 + 0.32 * Math.cos(t),
+        y: 0.28 - 0.24 * Math.sin(t),
+      })).concat(
+        ls(0, 1, 8).map((t) => ({ x: 0.18, y: 0.28 + 0.35 * t })),
+        ls(Math.PI * 0.95, Math.PI * 2.95, 18).map((t) => ({
+          x: 0.50 + 0.34 * Math.cos(t),
+          y: 0.74 + 0.22 * Math.sin(t),
+        }))
+      );
+      // 6C: Steep / Center-start 6
+      const pts6_c = ls(0, 1, 14).map((t) => ({ x: 0.50 - 0.32 * t, y: 0.05 + 0.55 * t })).concat(
+        ls(Math.PI * 0.9, Math.PI * 2.95, 22).map((t) => ({
+          x: 0.48 + 0.32 * Math.cos(t),
+          y: 0.75 + 0.22 * Math.sin(t),
+        }))
+      );
+      tpls[6] = [
+        resampleSingle(normalizePtsOnly(pts6_a), 36),
+        resampleSingle(normalizePtsOnly(pts6_b), 36),
+        resampleSingle(normalizePtsOnly(pts6_c), 36),
+      ];
 
       // 7: Top bar and diagonal down
       const pts7_1 = ls(0, 1, 14).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.05 })).concat(
@@ -578,6 +601,34 @@
       const midLeftCross = pts.filter((p) => p.x < 0.30 && p.y >= 0.48 && p.y <= 0.78).length;
       const botHalfLeft = pts.filter((p) => p.x < 0.35 && p.y > 0.55).length;
 
+      // Top horizontal bar check (x span at y < 0.18): 5 MUST have a horizontal bar across the top!
+      const topBarPts = pts.filter((p) => p.y < 0.18);
+      let hasTopBar = false;
+      if (topBarPts.length >= 3) {
+        const tbMinX = Math.min(...topBarPts.map((p) => p.x));
+        const tbMaxX = Math.max(...topBarPts.map((p) => p.x));
+        if (tbMinX < 0.35 && tbMaxX > 0.65) {
+          hasTopBar = true;
+        }
+      }
+
+      // Check bottom loop closure of 6:
+      // In 6, the bottom loop circles back up to meet the stem (first 60% of stroke)!
+      let has6BottomLoop = false;
+      if (strokes.length === 1 && closure > 0.35) {
+        const stemLimit = Math.max(1, Math.floor(pts.length * 0.6));
+        let minDToStem = 1.0;
+        for (let i = 0; i < stemLimit; i++) {
+          const d = Math.hypot(lastPt.x - pts[i].x, lastPt.y - pts[i].y);
+          if (d < minDToStem) minDToStem = d;
+        }
+        const hasDeepBot = pts.some((p) => p.y > 0.80);
+        const hasRightSide = pts.some((p) => p.x > 0.60 && p.y > 0.45);
+        if (minDToStem < 0.22 && hasDeepBot && hasRightSide) {
+          has6BottomLoop = true;
+        }
+      }
+
       let isClosed = false;
       if (strokes.length === 1) {
         const s0 = strokes[0];
@@ -618,6 +669,8 @@
         topLeftStem,
         midLeftCross,
         botHalfLeft,
+        hasTopBar,
+        has6BottomLoop,
         isClosed,
       };
     }
@@ -734,19 +787,18 @@
           // --- 5 ---
           else if (d === 5) {
             // 5 has top-left stem, top-right arc EMPTY, and rounded bottom belly
-            if (feat.topLeftStem >= 2) dist -= 0.05;
-            else dist += 0.25;
+            if (feat.topLeftStem >= 2) dist -= 0.04;
+            else dist += 0.20;
 
             // In 5, between top bar and belly, the top-right arc is EMPTY!
-            if (feat.topRightArc === 0) dist -= 0.06;
+            if (feat.topRightArc === 0) dist -= 0.04;
             else dist += 0.25;
 
-            // Bottom belly must curve across to the left
-            if (feat.botDeepCount >= 3 && feat.botMinX < 0.40 && feat.botMaxX > 0.65) {
-              dist -= 0.04;
-            } else if (feat.botDeepCount > 0 && feat.botMinX > 0.50) {
-              dist += 0.25;
-            }
+            // In 5, the stroke MUST NOT have a closed 6-like bottom loop ending at stem
+            if (feat.has6BottomLoop) dist += 0.35;
+
+            // In 5, if it has no top bar and has a loop at waist, cannot be 5
+            if (!feat.hasTopBar && feat.botRight >= 2 && feat.midLeft >= 2) dist += 0.25;
 
             if (feat.isClosed) dist += 0.30;
             if (feat.botRight === 0) dist += 0.20;
@@ -754,9 +806,25 @@
 
           // --- 6 ---
           else if (d === 6) {
+            // 6 is almost always single stroke
+            if (strokes.length > 1) dist += 0.20;
+
+            // 6 has closed bottom loop and curves down-left from top
+            if (feat.has6BottomLoop) dist -= 0.08;
+
+            // 6 MUST have both left and right sides of the bottom loop
             if (feat.botLeft >= 2 && feat.botRight >= 2) dist -= 0.05;
-            if (feat.topWidth < 0.45) dist -= 0.04;
-            else dist += 0.15;
+            else dist += 0.25;
+
+            // 6 MUST have points along the bottom
+            if (feat.botDeepCount >= 3) dist -= 0.03;
+            else dist += 0.20;
+
+            // 6 must NOT be a closed loop from start to end (unlike 0 or 8)
+            if (feat.isClosed) dist += 0.25;
+
+            // If stroke has open belly ending at bottom without closing into stem (like 5)
+            if (!feat.has6BottomLoop && feat.lastPt.y > 0.82 && feat.lastPt.x < 0.40) dist += 0.25;
           }
 
           // --- 7 ---
