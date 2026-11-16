@@ -372,7 +372,7 @@
     function buildTemplates() {
       const tpls = {};
 
-      // 0: Oval
+      // 0: Smooth oval
       const pts0_1 = ls(0, 2 * Math.PI, 36).map((t) => ({
         x: 0.5 + 0.45 * Math.sin(t),
         y: 0.5 - 0.48 * Math.cos(t),
@@ -434,31 +434,39 @@
         resampleSingle(normalizePtsOnly(pts3_2), 36),
       ];
 
-      // 4: Open 4
-      const pts4_1 = ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.65 * t, y: 0.05 + 0.60 * t })).concat(
+      // 4: Multi-stroke 4 and single-stroke 4 (resampled cleanly without air-gap lines)
+      const s4_a1 = ls(0, 1, 14).map((t) => ({ x: 0.75 - 0.65 * t, y: 0.05 + 0.60 * t })).concat(
+        ls(0, 1, 14).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.65 }))
+      );
+      const s4_a2 = ls(0, 1, 18).map((t) => ({ x: 0.75, y: 0.08 + 0.87 * t }));
+      const s4_b = ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.65 * t, y: 0.05 + 0.60 * t })).concat(
         ls(0, 1, 12).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.65 })),
+        ls(0, 1, 8).map((t) => ({ x: 0.95 - 0.20 * t, y: 0.65 - 0.55 * t })),
         ls(0, 1, 12).map((t) => ({ x: 0.75, y: 0.10 + 0.85 * t }))
       );
-      tpls[4] = [resampleSingle(normalizePtsOnly(pts4_1), 36)];
+      tpls[4] = [
+        resampleStrokes([normalizePtsOnly(s4_a1), normalizePtsOnly(s4_a2)], 36),
+        resampleSingle(normalizePtsOnly(s4_b), 36),
+      ];
 
-      // 5: Standard 5 (bar + stem + belly) & 5 alternate
-      const pts5_1 = ls(0, 1, 8).map((t) => ({ x: 0.85 - 0.70 * t, y: 0.05 })).concat(
-        ls(0, 1, 8).map((t) => ({ x: 0.15, y: 0.05 + 0.40 * t })),
+      // 5: 1-stroke 5 and 2-stroke 5
+      const pts5_1 = ls(0, 1, 8).map((t) => ({ x: 0.85 - 0.65 * t, y: 0.05 })).concat(
+        ls(0, 1, 8).map((t) => ({ x: 0.20, y: 0.05 + 0.40 * t })),
         ls(-Math.PI * 0.6, Math.PI * 0.75, 20).map((t) => ({
           x: 0.48 + 0.42 * Math.cos(t),
           y: 0.70 + 0.26 * Math.sin(t),
         }))
       );
-      const pts5_2 = ls(0, 1, 8).map((t) => ({ x: 0.20, y: 0.08 + 0.38 * t })).concat(
+      const s5_2_stem_belly = ls(0, 1, 8).map((t) => ({ x: 0.20, y: 0.08 + 0.38 * t })).concat(
         ls(-Math.PI * 0.6, Math.PI * 0.75, 20).map((t) => ({
           x: 0.48 + 0.42 * Math.cos(t),
           y: 0.70 + 0.26 * Math.sin(t),
-        })),
-        ls(0, 1, 8).map((t) => ({ x: 0.18 + 0.70 * t, y: 0.08 }))
+        }))
       );
+      const s5_2_top_bar = ls(0, 1, 10).map((t) => ({ x: 0.18 + 0.70 * t, y: 0.08 }));
       tpls[5] = [
         resampleSingle(normalizePtsOnly(pts5_1), 36),
-        resampleSingle(normalizePtsOnly(pts5_2), 36),
+        resampleStrokes([normalizePtsOnly(s5_2_stem_belly), normalizePtsOnly(s5_2_top_bar)], 36),
       ];
 
       // 6: Upper curve down to bottom loop
@@ -474,25 +482,31 @@
       const pts7_1 = ls(0, 1, 14).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.05 })).concat(
         ls(0, 1, 22).map((t) => ({ x: 0.92 - 0.65 * t, y: 0.05 + 0.90 * t }))
       );
-      tpls[7] = [resampleSingle(normalizePtsOnly(pts7_1), 36)];
+      const pts7_2 = ls(0, 1, 5).map((t) => ({ x: 0.15, y: 0.20 - 0.15 * t })).concat(
+        ls(0, 1, 12).map((t) => ({ x: 0.15 + 0.80 * t, y: 0.05 })),
+        ls(0, 1, 20).map((t) => ({ x: 0.92 - 0.65 * t, y: 0.05 + 0.90 * t }))
+      );
+      tpls[7] = [
+        resampleSingle(normalizePtsOnly(pts7_1), 36),
+        resampleSingle(normalizePtsOnly(pts7_2), 36),
+      ];
 
       // 8: Figure-8 & stacked circles
       const pts8_1 = ls(0, 2 * Math.PI, 36).map((t) => ({
         x: 0.5 + 0.44 * Math.sin(2 * t),
         y: 0.5 - 0.46 * Math.cos(t),
       }));
-      const pts8_2 = ls(0, 2 * Math.PI, 18).map((t) => ({
+      const s8_top = ls(0, 2 * Math.PI, 18).map((t) => ({
         x: 0.5 + 0.38 * Math.sin(t),
         y: 0.27 - 0.24 * Math.cos(t),
-      })).concat(
-        ls(0, 2 * Math.PI, 18).map((t) => ({
-          x: 0.5 - 0.44 * Math.sin(t),
-          y: 0.73 + 0.25 * Math.cos(t),
-        }))
-      );
+      }));
+      const s8_bot = ls(0, 2 * Math.PI, 18).map((t) => ({
+        x: 0.5 - 0.44 * Math.sin(t),
+        y: 0.73 + 0.25 * Math.cos(t),
+      }));
       tpls[8] = [
         resampleSingle(normalizePtsOnly(pts8_1), 36),
-        resampleSingle(normalizePtsOnly(pts8_2), 36),
+        resampleStrokes([normalizePtsOnly(s8_top), normalizePtsOnly(s8_bot)], 36),
       ];
 
       // 9: Top loop and right stem down
@@ -519,7 +533,7 @@
 
     const templates = buildTemplates();
 
-    function extractFeatures(pts) {
+    function extractFeatures(pts, strokes) {
       const firstPt = pts[0];
       const lastPt = pts[pts.length - 1];
       const closure = Math.hypot(firstPt.x - lastPt.x, firstPt.y - lastPt.y);
@@ -558,6 +572,28 @@
       const topMaxX = topDeep.length > 0 ? Math.max(...topDeep.map((p) => p.x)) : 0.5;
       const topWidth = topDeep.length > 0 ? topMaxX - topMinX : 0;
 
+      // Regional features
+      const topRightArc = pts.filter((p) => p.x > 0.50 && p.y >= 0.12 && p.y <= 0.32).length;
+      const topLeftStem = pts.filter((p) => p.x < 0.35 && p.y >= 0.15 && p.y <= 0.48).length;
+      const midLeftCross = pts.filter((p) => p.x < 0.30 && p.y >= 0.48 && p.y <= 0.78).length;
+      const botHalfLeft = pts.filter((p) => p.x < 0.35 && p.y > 0.55).length;
+
+      let isClosed = false;
+      if (strokes.length === 1) {
+        const s0 = strokes[0];
+        if (Math.hypot(s0[0].x - s0[s0.length - 1].x, s0[0].y - s0[s0.length - 1].y) < 0.35) {
+          isClosed = true;
+        }
+      } else if (strokes.length === 2) {
+        const s0 = strokes[0];
+        const s1 = strokes[1];
+        const c0 = Math.hypot(s0[0].x - s0[s0.length - 1].x, s0[0].y - s0[s0.length - 1].y);
+        const c1 = Math.hypot(s1[0].x - s1[s1.length - 1].x, s1[0].y - s1[s1.length - 1].y);
+        if (c0 < 0.35 && c1 < 0.35) {
+          isClosed = true;
+        }
+      }
+
       return {
         firstPt,
         lastPt,
@@ -578,6 +614,11 @@
         topMinX,
         topMaxX,
         topWidth,
+        topRightArc,
+        topLeftStem,
+        midLeftCross,
+        botHalfLeft,
+        isClosed,
       };
     }
 
@@ -588,13 +629,22 @@
 
       const normInfo = normalizePoints(allPts);
       const aspect = normInfo.aspect;
+      const w = normInfo.w;
+      const h = normInfo.h;
 
-      // Aspect ratio check for straight 1
-      if (aspect < 0.36) {
+      // 1. Reject tiny drawings or extreme horizontal scribbles
+      if (w < 12 && h < 12) return null;
+      if (aspect > 1.6) return null;
+
+      // Instant vertical 1: sufficient height and narrow aspect ratio
+      if (h >= 20 && aspect < 0.38) {
         return 1;
       }
+      if (aspect < 0.20) {
+        return null;
+      }
 
-      // Normalize each stroke within the cluster's bounding box
+      // Normalize each stroke within cluster bounding box
       const normStrokes = strokes.map((s) =>
         s.map((p) => ({
           x: (p.x - normInfo.minX) / normInfo.w,
@@ -602,120 +652,188 @@
         }))
       );
 
-      // Resample without connecting air gaps between strokes
-      const resampled = resampleStrokes(normStrokes, 36);
-      const feat = extractFeatures(resampled);
-
-      // Multi-stroke or single stroke closure
-      let isClosed = false;
-      if (strokes.length === 1) {
-        const s0 = normStrokes[0];
-        if (Math.hypot(s0[0].x - s0[s0.length - 1].x, s0[0].y - s0[s0.length - 1].y) < 0.35) {
-          isClosed = true;
+      // Check normalized stroke length (reject excessive tangles/scribbles)
+      let normTotalLen = 0;
+      normStrokes.forEach((ns) => {
+        for (let i = 0; i < ns.length - 1; i += 1) {
+          normTotalLen += Math.hypot(ns[i + 1].x - ns[i].x, ns[i + 1].y - ns[i].y);
         }
-      } else if (strokes.length === 2) {
-        const s0 = normStrokes[0];
-        const s1 = normStrokes[1];
-        const c0 = Math.hypot(s0[0].x - s0[s0.length - 1].x, s0[0].y - s0[s0.length - 1].y);
-        const c1 = Math.hypot(s1[0].x - s1[s1.length - 1].x, s1[0].y - s1[s1.length - 1].y);
-        if (c0 < 0.35 && c1 < 0.35) {
-          isClosed = true;
-        }
+      });
+      if (normTotalLen > 5.2) {
+        return null;
       }
 
-      let bestDigit = null;
-      let minScore = Infinity;
+      const resampled = resampleStrokes(normStrokes, 36);
+      const feat = extractFeatures(resampled, normStrokes);
+
+      const scores = {};
 
       for (let d = 0; d <= 9; d += 1) {
         const variants = templates[d] || [];
+        let bestDScore = Infinity;
+
         for (let v = 0; v < variants.length; v += 1) {
           let dist = pointCloudDist(resampled, variants[v]);
 
+          // --- 0 ---
           if (d === 0) {
-            if (isClosed) dist -= 0.06;
-            else dist += 0.20;
-            if (feat.midCenter <= 2) dist -= 0.03;
-            else dist += 0.08;
-            if (feat.topLeft >= 2 && feat.topRight >= 2 && feat.botLeft >= 2 && feat.botRight >= 2) {
-              dist -= 0.03;
-            }
-          } else if (d === 1) {
-            if (aspect < 0.42) dist -= 0.08;
-            else dist += 0.20;
-          } else if (d === 2) {
-            // Digit 2 MUST NOT be a closed loop
-            if (isClosed) dist += 0.30;
-            // End point of 2 must be on bottom right
-            if (feat.lastPt.x < 0.45 || feat.lastPt.y < 0.65) dist += 0.20;
-            // Bottom base must span across bottom
-            if (feat.botDeepCount >= 3 && feat.botMinX < 0.35 && feat.botMaxX > 0.65) {
-              dist -= 0.06;
-            } else {
-              dist += 0.15;
-            }
-            if (feat.botLeft < 2) dist += 0.15;
-          } else if (d === 3) {
-            // Digit 3 cannot have a vertical stem in top-left
-            const leftStem = resampled.filter((p) => p.x < 0.35 && p.y >= 0.15 && p.y <= 0.45).length;
-            if (leftStem >= 3) dist += 0.25;
-            if (isClosed) dist += 0.25;
-            if (feat.midLeft >= 3) dist += 0.20;
-            else if (feat.midLeft <= 1) dist -= 0.05;
-            if (feat.lastPt.x < 0.60) dist -= 0.04;
+            if (feat.isClosed) dist -= 0.05;
+            else dist += 0.25;
+            // Center of 0 MUST be hollow
+            if (feat.midCenter <= 1) dist -= 0.03;
+            else dist += 0.25;
+            if (feat.topWidth > 0.50 && feat.botWidth > 0.50) dist -= 0.03;
             else dist += 0.15;
-            if (feat.topRight >= 2 && feat.botRight >= 2) dist -= 0.03;
-          } else if (d === 4) {
-            const midPts = resampled.filter((p) => p.y >= 0.45 && p.y <= 0.75);
-            const midSpan = midPts.length > 0 ? Math.max(...midPts.map((p) => p.x)) - Math.min(...midPts.map((p) => p.x)) : 0;
-            if (midSpan > 0.60) dist -= 0.08;
-            if (feat.botLeft <= 1 && feat.botRight >= 1) dist -= 0.04;
-            if (isClosed) dist += 0.20;
-          } else if (d === 5) {
-            const leftStem = resampled.filter((p) => p.x < 0.35 && p.y >= 0.15 && p.y <= 0.45).length;
-            if (leftStem >= 3) dist -= 0.06;
-            if (isClosed) dist += 0.25;
-            if (feat.topLeft >= 2 && feat.botRight >= 2 && feat.lastPt.x < 0.60) dist -= 0.06;
-            if (feat.botRight === 0) dist += 0.20;
-            if (feat.botLeft >= 2 && feat.botRight >= 2 && feat.botDeepCount >= 3 && feat.lastPt.x > 0.70) {
+          }
+
+          // --- 1 ---
+          else if (d === 1) {
+            if (aspect < 0.42) dist -= 0.08;
+            else dist += 0.30;
+          }
+
+          // --- 2 ---
+          else if (d === 2) {
+            if (feat.isClosed) dist += 0.30;
+            // Must have bottom-right base
+            if (feat.lastPt.x < 0.45 || feat.lastPt.y < 0.65) dist += 0.20;
+            if (feat.botDeepCount >= 3 && feat.botMinX < 0.35 && feat.botMaxX > 0.65) {
+              dist -= 0.05;
+            } else {
               dist += 0.20;
             }
-          } else if (d === 6) {
-            if (feat.botLeft >= 2 && feat.botRight >= 2) dist -= 0.06;
-            if (feat.topWidth < 0.45) dist -= 0.05;
-            else dist += 0.10;
-          } else if (d === 7) {
-            if (feat.topWidth > 0.55) dist -= 0.05;
-            else dist += 0.15;
-            if (feat.botRight <= 1) dist -= 0.04;
-            else dist += 0.15;
-          } else if (d === 8) {
-            if (isClosed) dist -= 0.06;
-            else if (strokes.length === 1 && feat.closure > 0.45) dist += 0.30;
-            if (feat.topWidth < 0.40) dist += 0.25;
-            if (feat.topLeft >= 2 && feat.topRight >= 2 && feat.botLeft >= 2 && feat.botRight >= 2) {
-              dist -= 0.07;
-            }
-            if (feat.midCenter >= 2) dist -= 0.04;
-            if (feat.midLeft === 0) dist += 0.20;
-            if (feat.botLeft === 0 || feat.topRight === 0) dist += 0.20;
-          } else if (d === 9) {
-            const midLowLeft = resampled.filter((p) => p.x < 0.35 && p.y > 0.50).length;
-            if (midLowLeft >= 3) dist += 0.30;
-            if (feat.botLeft <= 1) dist -= 0.07;
-            else dist += 0.25;
-            if (feat.topWidth > 0.50) dist -= 0.05;
-            if (feat.topLeft >= 2 && feat.topRight >= 2 && feat.botRight >= 2) dist -= 0.05;
-            if (feat.topRight === 0) dist += 0.20;
+            if (feat.botLeft < 2) dist += 0.18;
           }
 
-          if (dist < minScore) {
-            minScore = dist;
-            bestDigit = d;
+          // --- 3 ---
+          else if (d === 3) {
+            if (feat.isClosed) dist += 0.30;
+            // Left waist is open
+            if (feat.midLeft >= 3) dist += 0.25;
+            else if (feat.midLeft <= 1) dist -= 0.04;
+            if (feat.topLeftStem >= 3) dist += 0.25;
+            if (feat.lastPt.x < 0.60) dist -= 0.03;
+            else dist += 0.15;
+            if (feat.topRight >= 2 && feat.botRight >= 2) dist -= 0.03;
+          }
+
+          // --- 4 ---
+          else if (d === 4) {
+            // 4 has a horizontal crossbar at mid height that extends to left (x < 0.30)
+            if (feat.midLeftCross >= 2) dist -= 0.06;
+            else dist += 0.25;
+
+            // Bottom points of 4 MUST be on the right (vertical stem)
+            if (feat.botDeepCount > 0 && feat.botMinX > 0.45) dist -= 0.04;
+            else if (feat.botDeepCount > 0 && feat.botMinX < 0.35) dist += 0.25;
+
+            if (feat.isClosed) dist += 0.25;
+            if (feat.botRight >= 2) dist -= 0.03;
+          }
+
+          // --- 5 ---
+          else if (d === 5) {
+            // 5 has top-left stem, top-right arc EMPTY, and rounded bottom belly
+            if (feat.topLeftStem >= 2) dist -= 0.05;
+            else dist += 0.25;
+
+            // In 5, between top bar and belly, the top-right arc is EMPTY!
+            if (feat.topRightArc === 0) dist -= 0.06;
+            else dist += 0.25;
+
+            // Bottom belly must curve across to the left
+            if (feat.botDeepCount >= 3 && feat.botMinX < 0.40 && feat.botMaxX > 0.65) {
+              dist -= 0.04;
+            } else if (feat.botDeepCount > 0 && feat.botMinX > 0.50) {
+              dist += 0.25;
+            }
+
+            if (feat.isClosed) dist += 0.30;
+            if (feat.botRight === 0) dist += 0.20;
+          }
+
+          // --- 6 ---
+          else if (d === 6) {
+            if (feat.botLeft >= 2 && feat.botRight >= 2) dist -= 0.05;
+            if (feat.topWidth < 0.45) dist -= 0.04;
+            else dist += 0.15;
+          }
+
+          // --- 7 ---
+          else if (d === 7) {
+            // 7 has wide top bar, empty bottom-right, diagonal down-left
+            if (feat.topWidth > 0.55) dist -= 0.05;
+            else dist += 0.25;
+
+            // Bottom-right MUST be empty in 7!
+            if (feat.botRight <= 1) dist -= 0.06;
+            else dist += 0.30;
+
+            // Bottom points in 7 must be on left/center (botMaxX < 0.65)
+            if (feat.botDeepCount > 0 && feat.botMaxX < 0.65) dist -= 0.04;
+            else dist += 0.20;
+          }
+
+          // --- 8 ---
+          else if (d === 8) {
+            if (!feat.isClosed && feat.closure > 0.45) dist += 0.30;
+            else if (feat.isClosed) dist -= 0.04;
+
+            // 8 MUST have points in center crossing
+            if (feat.midCenter >= 2) dist -= 0.03;
+            else dist += 0.25;
+
+            // 8 MUST have top-right arc of top loop
+            if (feat.topRightArc >= 2) dist -= 0.03;
+            else dist += 0.25;
+
+            // 8 MUST have points on left waist/lobes
+            if (feat.midLeft >= 2) dist -= 0.03;
+            else dist += 0.25;
+
+            if (feat.topWidth < 0.45) dist += 0.25;
+          }
+
+          // --- 9 ---
+          else if (d === 9) {
+            // Right stem MUST reach bottom-right!
+            if (feat.botRight >= 2) dist -= 0.05;
+            else dist += 0.35;
+
+            // Bottom-left quadrant (x < 0.35, y > 0.55) MUST be empty
+            if (feat.botHalfLeft <= 1) dist -= 0.06;
+            else dist += 0.35;
+
+            if (feat.topWidth > 0.50) dist -= 0.04;
+            else dist += 0.20;
+            if (feat.topLeft >= 2 && feat.topRight >= 2) dist -= 0.03;
+          }
+
+          if (dist < bestDScore) {
+            bestDScore = dist;
           }
         }
+
+        scores[d] = bestDScore;
       }
 
-      return bestDigit;
+      const sortedScores = Object.entries(scores)
+        .map(([digit, score]) => ({ digit: Number(digit), score }))
+        .sort((a, b) => a.score - b.score);
+
+      const best = sortedScores[0];
+      const second = sortedScores.length > 1 ? sortedScores[1] : { score: Infinity };
+
+      // Confidence & rejection threshold:
+      // If the match does not make sense, do not guess a wrong number
+      if (best.score > 0.15) {
+        return null;
+      }
+      if (best.score > 0.10 && (second.score - best.score) < 0.02) {
+        return null;
+      }
+
+      return best.digit;
     }
 
     function clusterStrokes(strokes) {
@@ -815,8 +933,7 @@
         if (d1 !== null && d2 !== null) {
           return `${d1}${d2}`;
         }
-        if (d1 !== null) return String(d1);
-        if (d2 !== null) return String(d2);
+        return null;
       }
 
       return null;
@@ -993,8 +1110,11 @@
     if (recognized !== null && recognized !== '') {
       dom.recognizedValue.textContent = recognized;
       state.typedAnswer = recognized;
-      renderStage();
+    } else {
+      dom.recognizedValue.textContent = '—';
+      state.typedAnswer = '';
     }
+    renderStage();
   }
 
   // --- Rendering Helpers ---
