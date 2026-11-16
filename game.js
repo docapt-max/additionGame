@@ -240,15 +240,16 @@
   // =========================================================
   const recognizer = (() => {
     function ls(a, b, n) {
+      if (n <= 1) return [a];
       const res = [];
-      const denom = Math.max(1, n - 1);
+      const denom = n - 1;
       for (let i = 0; i < n; i += 1) {
-        res.push(a + (b - a) * i / denom);
+        res.push(a + ((b - a) * i) / denom);
       }
       return res;
     }
 
-    function resample(points, n = 32) {
+    function resampleSingle(points, n = 36) {
       if (!points || points.length <= 1) {
         return points && points.length === 1 ? Array(n).fill(points[0]) : Array(n).fill({ x: 0.5, y: 0.5 });
       }
@@ -260,7 +261,7 @@
         return Array(n).fill(points[0]);
       }
       const interval = totalLen / (n - 1);
-      const res = [points[0]];
+      const res = [{ x: points[0].x, y: points[0].y }];
       let d = 0;
       const pts = points.map((p) => ({ x: p.x, y: p.y }));
       let i = 0;
@@ -281,12 +282,42 @@
         }
       }
       while (res.length < n) {
-        res.push(pts[pts.length - 1]);
+        res.push({ x: pts[pts.length - 1].x, y: pts[pts.length - 1].y });
       }
       return res;
     }
 
-    function normalize(points) {
+    function resampleStrokes(strokes, totalPts = 36) {
+      if (!strokes || strokes.length === 0) {
+        return Array(totalPts).fill({ x: 0.5, y: 0.5 });
+      }
+      const lengths = strokes.map((s) => {
+        if (!s || s.length < 2) return 1e-4;
+        let l = 0;
+        for (let i = 0; i < s.length - 1; i += 1) {
+          l += Math.hypot(s[i + 1].x - s[i].x, s[i + 1].y - s[i].y);
+        }
+        return Math.max(l, 1e-4);
+      });
+      const totalLen = lengths.reduce((sum, l) => sum + l, 0);
+      const counts = lengths.map((l) => Math.max(4, Math.round((totalPts * l) / totalLen)));
+      const sumCounts = counts.reduce((sum, c) => sum + c, 0);
+      const diff = sumCounts - totalPts;
+      let maxIdx = 0;
+      for (let i = 1; i < counts.length; i += 1) {
+        if (counts[i] > counts[maxIdx]) maxIdx = i;
+      }
+      counts[maxIdx] = Math.max(4, counts[maxIdx] - diff);
+
+      const result = [];
+      for (let i = 0; i < strokes.length; i += 1) {
+        const segResampled = resampleSingle(strokes[i], counts[i]);
+        result.push(...segResampled);
+      }
+      return result;
+    }
+
+    function normalizePoints(points) {
       let minX = Infinity;
       let maxX = -Infinity;
       let minY = Infinity;
@@ -311,6 +342,10 @@
       };
     }
 
+    function normalizePtsOnly(points) {
+      return normalizePoints(points).pts;
+    }
+
     function pointCloudDist(pts1, pts2) {
       let d1 = 0;
       for (let i = 0; i < pts1.length; i += 1) {
@@ -333,110 +368,261 @@
       return (d1 + d2) / (pts1.length + pts2.length);
     }
 
-    // Prototype Templates for Digits 0 - 9
-    const templates = {};
+    // Build Normalized Prototype Templates for Digits 0 - 9
+    function buildTemplates() {
+      const tpls = {};
 
-    // 0: Oval
-    templates[0] = [
-      resample(ls(0, 2 * Math.PI, 32).map((t) => ({ x: 0.5 + 0.38 * Math.sin(t), y: 0.5 - 0.44 * Math.cos(t) }))),
-    ];
+      // 0: Oval
+      const pts0_1 = ls(0, 2 * Math.PI, 36).map((t) => ({
+        x: 0.5 + 0.45 * Math.sin(t),
+        y: 0.5 - 0.48 * Math.cos(t),
+      }));
+      tpls[0] = [resampleSingle(normalizePtsOnly(pts0_1), 36)];
 
-    // 1: Straight down & with serif
-    templates[1] = [
-      resample(ls(0, 1, 32).map((t) => ({ x: 0.5, y: 0.05 + 0.9 * t }))),
-      resample(
-        ls(0, 1, 8).map((t) => ({ x: 0.35 + 0.15 * t, y: 0.25 - 0.2 * t })).concat(
-          ls(0, 1, 24).map((t) => ({ x: 0.5, y: 0.05 + 0.9 * t }))
-        )
-      ),
-    ];
+      // 1: Straight vertical & serif vertical
+      const pts1_1 = ls(0, 1, 36).map((t) => ({ x: 0.5, y: t }));
+      const pts1_2 = ls(0, 1, 10).map((t) => ({ x: 0.2 + 0.3 * t, y: 0.2 - 0.2 * t })).concat(
+        ls(0, 1, 26).map((t) => ({ x: 0.5, y: t }))
+      );
+      tpls[1] = [
+        resampleSingle(normalizePtsOnly(pts1_1), 36),
+        resampleSingle(normalizePtsOnly(pts1_2), 36),
+      ];
 
-    // 2: Top curve, diagonal down, flat horizontal bottom
-    templates[2] = [
-      resample(
-        ls(-Math.PI * 0.8, Math.PI * 0.2, 12).map((t) => ({ x: 0.5 + 0.32 * Math.cos(t), y: 0.24 + 0.2 * Math.sin(t) })).concat(
-          ls(0, 1, 10).map((t) => ({ x: 0.8 - 0.65 * t, y: 0.42 + 0.5 * t })),
-          ls(0, 1, 10).map((t) => ({ x: 0.15 + 0.72 * t, y: 0.94 }))
-        )
-      ),
-    ];
+      // 2: Standard printed 2 & 2 with bottom loop
+      const pts2_1 = ls(-Math.PI * 0.85, Math.PI * 0.15, 14).map((t) => ({
+        x: 0.5 + 0.38 * Math.cos(t),
+        y: 0.26 + 0.24 * Math.sin(t),
+      })).concat(
+        ls(0, 1, 12).map((t) => ({ x: 0.82 - 0.72 * t, y: 0.38 + 0.57 * t })),
+        ls(0, 1, 10).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.96 }))
+      );
+      const pts2_2 = ls(-Math.PI * 0.85, Math.PI * 0.15, 14).map((t) => ({
+        x: 0.5 + 0.38 * Math.cos(t),
+        y: 0.26 + 0.24 * Math.sin(t),
+      })).concat(
+        ls(0, 1, 10).map((t) => ({ x: 0.82 - 0.65 * t, y: 0.38 + 0.52 * t })),
+        ls(Math.PI * 0.5, -Math.PI * 1.0, 6).map((t) => ({ x: 0.17 + 0.12 * Math.cos(t), y: 0.90 + 0.08 * Math.sin(t) })),
+        ls(0, 1, 8).map((t) => ({ x: 0.2 + 0.75 * t, y: 0.95 }))
+      );
+      tpls[2] = [
+        resampleSingle(normalizePtsOnly(pts2_1), 36),
+        resampleSingle(normalizePtsOnly(pts2_2), 36),
+      ];
 
-    // 3: Top arc, middle cusp, bottom arc
-    templates[3] = [
-      resample(
-        ls(0, 1, 8).map((t) => ({ x: 0.2 + 0.6 * t, y: 0.1 })).concat(
-          ls(0, 1, 8).map((t) => ({ x: 0.8 - 0.35 * t, y: 0.1 + 0.4 * t })),
-          ls(0, 1, 8).map((t) => ({ x: 0.45 + 0.4 * t, y: 0.5 + 0.2 * t })),
-          ls(0, 1, 8).map((t) => ({ x: 0.85 - 0.65 * t, y: 0.7 + 0.24 * t }))
-        )
-      ),
-    ];
+      // 3: Curved 3 & flat-top 3
+      const pts3_1 = ls(-Math.PI * 0.8, Math.PI * 0.5, 12).map((t) => ({
+        x: 0.5 + 0.38 * Math.cos(t),
+        y: 0.26 + 0.22 * Math.sin(t),
+      })).concat(
+        ls(0, 1, 4).map((t) => ({ x: 0.5 - 0.15 * t, y: 0.48 })),
+        ls(0, 1, 4).map((t) => ({ x: 0.35 + 0.15 * t, y: 0.48 })),
+        ls(-Math.PI * 0.5, Math.PI * 0.8, 14).map((t) => ({
+          x: 0.5 + 0.40 * Math.cos(t),
+          y: 0.72 + 0.24 * Math.sin(t),
+        }))
+      );
+      const pts3_2 = ls(0, 1, 8).map((t) => ({ x: 0.15 + 0.75 * t, y: 0.05 })).concat(
+        ls(0, 1, 10).map((t) => ({ x: 0.90 - 0.48 * t, y: 0.05 + 0.42 * t })),
+        ls(-Math.PI * 0.45, Math.PI * 0.8, 18).map((t) => ({
+          x: 0.48 + 0.42 * Math.cos(t),
+          y: 0.70 + 0.26 * Math.sin(t),
+        }))
+      );
+      tpls[3] = [
+        resampleSingle(normalizePtsOnly(pts3_1), 36),
+        resampleSingle(normalizePtsOnly(pts3_2), 36),
+      ];
 
-    // 4: L-shape and vertical cross down
-    templates[4] = [
-      resample(
-        ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.55 * t, y: 0.08 + 0.55 * t })).concat(
-          ls(0, 1, 10).map((t) => ({ x: 0.2 + 0.68 * t, y: 0.63 })),
-          ls(0, 1, 10).map((t) => ({ x: 0.72, y: 0.15 + 0.8 * t }))
-        )
-      ),
-    ];
+      // 4: Open 4
+      const pts4_1 = ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.65 * t, y: 0.05 + 0.60 * t })).concat(
+        ls(0, 1, 12).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.65 })),
+        ls(0, 1, 12).map((t) => ({ x: 0.75, y: 0.10 + 0.85 * t }))
+      );
+      tpls[4] = [resampleSingle(normalizePtsOnly(pts4_1), 36)];
 
-    // 5: Top bar, vertical stem, round bottom belly
-    templates[5] = [
-      resample(
-        ls(0, 1, 8).map((t) => ({ x: 0.78 - 0.55 * t, y: 0.1 })).concat(
-          ls(0, 1, 8).map((t) => ({ x: 0.23, y: 0.1 + 0.38 * t })),
-          ls(-Math.PI * 0.5, Math.PI * 0.75, 16).map((t) => ({ x: 0.5 + 0.35 * Math.cos(t), y: 0.7 + 0.23 * Math.sin(t) }))
-        )
-      ),
-    ];
+      // 5: Standard 5 (bar + stem + belly) & 5 alternate
+      const pts5_1 = ls(0, 1, 8).map((t) => ({ x: 0.85 - 0.70 * t, y: 0.05 })).concat(
+        ls(0, 1, 8).map((t) => ({ x: 0.15, y: 0.05 + 0.40 * t })),
+        ls(-Math.PI * 0.6, Math.PI * 0.75, 20).map((t) => ({
+          x: 0.48 + 0.42 * Math.cos(t),
+          y: 0.70 + 0.26 * Math.sin(t),
+        }))
+      );
+      const pts5_2 = ls(0, 1, 8).map((t) => ({ x: 0.20, y: 0.08 + 0.38 * t })).concat(
+        ls(-Math.PI * 0.6, Math.PI * 0.75, 20).map((t) => ({
+          x: 0.48 + 0.42 * Math.cos(t),
+          y: 0.70 + 0.26 * Math.sin(t),
+        })),
+        ls(0, 1, 8).map((t) => ({ x: 0.18 + 0.70 * t, y: 0.08 }))
+      );
+      tpls[5] = [
+        resampleSingle(normalizePtsOnly(pts5_1), 36),
+        resampleSingle(normalizePtsOnly(pts5_2), 36),
+      ];
 
-    // 6: Starts top-right, curves down into bottom loop
-    templates[6] = [
-      resample(
-        ls(0, 1, 12).map((t) => ({ x: 0.75 - 0.52 * t, y: 0.1 + 0.5 * t })).concat(
-          ls(0, 2 * Math.PI, 20).map((t) => ({ x: 0.5 + 0.32 * Math.cos(t), y: 0.68 + 0.24 * Math.sin(t) }))
-        )
-      ),
-    ];
+      // 6: Upper curve down to bottom loop
+      const pts6_1 = ls(0, 1, 14).map((t) => ({ x: 0.82 - 0.65 * t, y: 0.05 + 0.50 * t })).concat(
+        ls(Math.PI * 0.8, Math.PI * 2.8, 22).map((t) => ({
+          x: 0.50 + 0.38 * Math.cos(t),
+          y: 0.68 + 0.28 * Math.sin(t),
+        }))
+      );
+      tpls[6] = [resampleSingle(normalizePtsOnly(pts6_1), 36)];
 
-    // 7: Top bar and diagonal down
-    templates[7] = [
-      resample(
-        ls(0, 1, 12).map((t) => ({ x: 0.15 + 0.72 * t, y: 0.1 })).concat(
-          ls(0, 1, 20).map((t) => ({ x: 0.87 - 0.55 * t, y: 0.1 + 0.85 * t }))
-        )
-      ),
-    ];
+      // 7: Top bar and diagonal down
+      const pts7_1 = ls(0, 1, 14).map((t) => ({ x: 0.10 + 0.85 * t, y: 0.05 })).concat(
+        ls(0, 1, 22).map((t) => ({ x: 0.92 - 0.65 * t, y: 0.05 + 0.90 * t }))
+      );
+      tpls[7] = [resampleSingle(normalizePtsOnly(pts7_1), 36)];
 
-    // 8: Stacked loops / figure-8
-    templates[8] = [
-      resample(
-        ls(0, 2 * Math.PI, 16).map((t) => ({ x: 0.5 + 0.26 * Math.sin(t), y: 0.28 - 0.22 * Math.cos(t) })).concat(
-          ls(0, 2 * Math.PI, 16).map((t) => ({ x: 0.5 - 0.3 * Math.sin(t), y: 0.72 + 0.24 * Math.cos(t) }))
-        )
-      ),
-    ];
+      // 8: Figure-8 & stacked circles
+      const pts8_1 = ls(0, 2 * Math.PI, 36).map((t) => ({
+        x: 0.5 + 0.44 * Math.sin(2 * t),
+        y: 0.5 - 0.46 * Math.cos(t),
+      }));
+      const pts8_2 = ls(0, 2 * Math.PI, 18).map((t) => ({
+        x: 0.5 + 0.38 * Math.sin(t),
+        y: 0.27 - 0.24 * Math.cos(t),
+      })).concat(
+        ls(0, 2 * Math.PI, 18).map((t) => ({
+          x: 0.5 - 0.44 * Math.sin(t),
+          y: 0.73 + 0.25 * Math.cos(t),
+        }))
+      );
+      tpls[8] = [
+        resampleSingle(normalizePtsOnly(pts8_1), 36),
+        resampleSingle(normalizePtsOnly(pts8_2), 36),
+      ];
 
-    // 9: Top loop and stem down
-    templates[9] = [
-      resample(
-        ls(0, 2 * Math.PI, 20).map((t) => ({ x: 0.5 + 0.3 * Math.cos(t), y: 0.32 + 0.24 * Math.sin(t) })).concat(
-          ls(0, 1, 12).map((t) => ({ x: 0.8, y: 0.32 + 0.63 * t }))
-        )
-      ),
-    ];
+      // 9: Top loop and right stem down
+      const pts9_1 = ls(-Math.PI * 0.5, Math.PI * 1.5, 20).map((t) => ({
+        x: 0.50 + 0.38 * Math.cos(t),
+        y: 0.30 + 0.26 * Math.sin(t),
+      })).concat(
+        ls(0, 1, 16).map((t) => ({ x: 0.88 - 0.05 * t, y: 0.30 + 0.66 * t }))
+      );
+      const pts9_2 = ls(-Math.PI * 0.5, Math.PI * 1.5, 20).map((t) => ({
+        x: 0.50 + 0.38 * Math.cos(t),
+        y: 0.30 + 0.26 * Math.sin(t),
+      })).concat(
+        ls(0, 1, 10).map((t) => ({ x: 0.88, y: 0.30 + 0.58 * t })),
+        ls(0, 1, 6).map((t) => ({ x: 0.88 - 0.35 * t, y: 0.90 + 0.08 * t }))
+      );
+      tpls[9] = [
+        resampleSingle(normalizePtsOnly(pts9_1), 36),
+        resampleSingle(normalizePtsOnly(pts9_2), 36),
+      ];
 
-    function recognizeSingleDigit(rawPoints) {
-      if (!rawPoints || rawPoints.length < 2) return null;
-      const norm = normalize(rawPoints);
+      return tpls;
+    }
 
-      if (norm.aspect < 0.36) {
+    const templates = buildTemplates();
+
+    function extractFeatures(pts) {
+      const firstPt = pts[0];
+      const lastPt = pts[pts.length - 1];
+      const closure = Math.hypot(firstPt.x - lastPt.x, firstPt.y - lastPt.y);
+
+      let topLeft = 0;
+      let topRight = 0;
+      let midLeft = 0;
+      let midCenter = 0;
+      let midRight = 0;
+      let botLeft = 0;
+      let botRight = 0;
+      let botCenter = 0;
+
+      const botDeep = [];
+      const topDeep = [];
+
+      pts.forEach((p) => {
+        if (p.x < 0.45 && p.y < 0.40) topLeft += 1;
+        if (p.x > 0.55 && p.y < 0.40) topRight += 1;
+        if (p.x < 0.35 && p.y >= 0.35 && p.y <= 0.65) midLeft += 1;
+        if (p.x >= 0.35 && p.x <= 0.65 && p.y >= 0.35 && p.y <= 0.65) midCenter += 1;
+        if (p.x > 0.65 && p.y >= 0.35 && p.y <= 0.65) midRight += 1;
+        if (p.x < 0.45 && p.y > 0.65) botLeft += 1;
+        if (p.x > 0.55 && p.y > 0.65) botRight += 1;
+        if (p.x >= 0.35 && p.x <= 0.65 && p.y > 0.75) botCenter += 1;
+
+        if (p.y > 0.82) botDeep.push(p);
+        if (p.y < 0.20) topDeep.push(p);
+      });
+
+      const botMinX = botDeep.length > 0 ? Math.min(...botDeep.map((p) => p.x)) : 0.5;
+      const botMaxX = botDeep.length > 0 ? Math.max(...botDeep.map((p) => p.x)) : 0.5;
+      const botWidth = botDeep.length > 0 ? botMaxX - botMinX : 0;
+
+      const topMinX = topDeep.length > 0 ? Math.min(...topDeep.map((p) => p.x)) : 0.5;
+      const topMaxX = topDeep.length > 0 ? Math.max(...topDeep.map((p) => p.x)) : 0.5;
+      const topWidth = topDeep.length > 0 ? topMaxX - topMinX : 0;
+
+      return {
+        firstPt,
+        lastPt,
+        closure,
+        topLeft,
+        topRight,
+        midLeft,
+        midCenter,
+        midRight,
+        botLeft,
+        botRight,
+        botCenter,
+        botDeepCount: botDeep.length,
+        botMinX,
+        botMaxX,
+        botWidth,
+        topDeepCount: topDeep.length,
+        topMinX,
+        topMaxX,
+        topWidth,
+      };
+    }
+
+    function recognizeSingleDigitFromStrokes(strokes) {
+      if (!strokes || strokes.length === 0) return null;
+      const allPts = strokes.flat();
+      if (allPts.length < 2) return null;
+
+      const normInfo = normalizePoints(allPts);
+      const aspect = normInfo.aspect;
+
+      // Aspect ratio check for straight 1
+      if (aspect < 0.36) {
         return 1;
       }
 
-      const resampled = resample(norm.pts, 32);
+      // Normalize each stroke within the cluster's bounding box
+      const normStrokes = strokes.map((s) =>
+        s.map((p) => ({
+          x: (p.x - normInfo.minX) / normInfo.w,
+          y: (p.y - normInfo.minY) / normInfo.h,
+        }))
+      );
+
+      // Resample without connecting air gaps between strokes
+      const resampled = resampleStrokes(normStrokes, 36);
+      const feat = extractFeatures(resampled);
+
+      // Multi-stroke or single stroke closure
+      let isClosed = false;
+      if (strokes.length === 1) {
+        const s0 = normStrokes[0];
+        if (Math.hypot(s0[0].x - s0[s0.length - 1].x, s0[0].y - s0[s0.length - 1].y) < 0.35) {
+          isClosed = true;
+        }
+      } else if (strokes.length === 2) {
+        const s0 = normStrokes[0];
+        const s1 = normStrokes[1];
+        const c0 = Math.hypot(s0[0].x - s0[s0.length - 1].x, s0[0].y - s0[s0.length - 1].y);
+        const c1 = Math.hypot(s1[0].x - s1[s1.length - 1].x, s1[0].y - s1[s1.length - 1].y);
+        if (c0 < 0.35 && c1 < 0.35) {
+          isClosed = true;
+        }
+      }
+
       let bestDigit = null;
       let minScore = Infinity;
 
@@ -446,37 +632,80 @@
           let dist = pointCloudDist(resampled, variants[v]);
 
           if (d === 0) {
-            const gap = Math.hypot(norm.pts[0].x - norm.pts[norm.pts.length - 1].x, norm.pts[0].y - norm.pts[norm.pts.length - 1].y);
-            if (gap < 0.28) {
-              dist -= 0.04;
-            } else {
-              dist += 0.09;
+            if (isClosed) dist -= 0.06;
+            else dist += 0.20;
+            if (feat.midCenter <= 2) dist -= 0.03;
+            else dist += 0.08;
+            if (feat.topLeft >= 2 && feat.topRight >= 2 && feat.botLeft >= 2 && feat.botRight >= 2) {
+              dist -= 0.03;
             }
           } else if (d === 1) {
-            if (norm.aspect < 0.42) {
+            if (aspect < 0.42) dist -= 0.08;
+            else dist += 0.20;
+          } else if (d === 2) {
+            // Digit 2 MUST NOT be a closed loop
+            if (isClosed) dist += 0.30;
+            // End point of 2 must be on bottom right
+            if (feat.lastPt.x < 0.45 || feat.lastPt.y < 0.65) dist += 0.20;
+            // Bottom base must span across bottom
+            if (feat.botDeepCount >= 3 && feat.botMinX < 0.35 && feat.botMaxX > 0.65) {
               dist -= 0.06;
             } else {
-              dist += 0.12;
+              dist += 0.15;
             }
-          } else if (d === 2) {
-            const bottomPts = resampled.filter((p) => p.y > 0.85);
-            if (bottomPts.length >= 3) {
-              const baseWidth = Math.max(...bottomPts.map((p) => p.x)) - Math.min(...bottomPts.map((p) => p.x));
-              if (baseWidth > 0.45) dist -= 0.05;
-            }
+            if (feat.botLeft < 2) dist += 0.15;
           } else if (d === 3) {
-            const midPts = resampled.filter((p) => p.y >= 0.38 && p.y <= 0.62);
-            if (midPts.length > 0) {
-              const midMinX = Math.min(...midPts.map((p) => p.x));
-              if (midMinX < 0.6) dist -= 0.04;
+            // Digit 3 cannot have a vertical stem in top-left
+            const leftStem = resampled.filter((p) => p.x < 0.35 && p.y >= 0.15 && p.y <= 0.45).length;
+            if (leftStem >= 3) dist += 0.25;
+            if (isClosed) dist += 0.25;
+            if (feat.midLeft >= 3) dist += 0.20;
+            else if (feat.midLeft <= 1) dist -= 0.05;
+            if (feat.lastPt.x < 0.60) dist -= 0.04;
+            else dist += 0.15;
+            if (feat.topRight >= 2 && feat.botRight >= 2) dist -= 0.03;
+          } else if (d === 4) {
+            const midPts = resampled.filter((p) => p.y >= 0.45 && p.y <= 0.75);
+            const midSpan = midPts.length > 0 ? Math.max(...midPts.map((p) => p.x)) - Math.min(...midPts.map((p) => p.x)) : 0;
+            if (midSpan > 0.60) dist -= 0.08;
+            if (feat.botLeft <= 1 && feat.botRight >= 1) dist -= 0.04;
+            if (isClosed) dist += 0.20;
+          } else if (d === 5) {
+            const leftStem = resampled.filter((p) => p.x < 0.35 && p.y >= 0.15 && p.y <= 0.45).length;
+            if (leftStem >= 3) dist -= 0.06;
+            if (isClosed) dist += 0.25;
+            if (feat.topLeft >= 2 && feat.botRight >= 2 && feat.lastPt.x < 0.60) dist -= 0.06;
+            if (feat.botRight === 0) dist += 0.20;
+            if (feat.botLeft >= 2 && feat.botRight >= 2 && feat.botDeepCount >= 3 && feat.lastPt.x > 0.70) {
+              dist += 0.20;
             }
+          } else if (d === 6) {
+            if (feat.botLeft >= 2 && feat.botRight >= 2) dist -= 0.06;
+            if (feat.topWidth < 0.45) dist -= 0.05;
+            else dist += 0.10;
           } else if (d === 7) {
-            const topPts = resampled.filter((p) => p.y < 0.24);
-            if (topPts.length >= 3) {
-              const topW = Math.max(...topPts.map((p) => p.x)) - Math.min(...topPts.map((p) => p.x));
-              if (topW > 0.5) dist -= 0.05;
-              else dist += 0.07;
+            if (feat.topWidth > 0.55) dist -= 0.05;
+            else dist += 0.15;
+            if (feat.botRight <= 1) dist -= 0.04;
+            else dist += 0.15;
+          } else if (d === 8) {
+            if (isClosed) dist -= 0.06;
+            else if (strokes.length === 1 && feat.closure > 0.45) dist += 0.30;
+            if (feat.topWidth < 0.40) dist += 0.25;
+            if (feat.topLeft >= 2 && feat.topRight >= 2 && feat.botLeft >= 2 && feat.botRight >= 2) {
+              dist -= 0.07;
             }
+            if (feat.midCenter >= 2) dist -= 0.04;
+            if (feat.midLeft === 0) dist += 0.20;
+            if (feat.botLeft === 0 || feat.topRight === 0) dist += 0.20;
+          } else if (d === 9) {
+            const midLowLeft = resampled.filter((p) => p.x < 0.35 && p.y > 0.50).length;
+            if (midLowLeft >= 3) dist += 0.30;
+            if (feat.botLeft <= 1) dist -= 0.07;
+            else dist += 0.25;
+            if (feat.topWidth > 0.50) dist -= 0.05;
+            if (feat.topLeft >= 2 && feat.topRight >= 2 && feat.botRight >= 2) dist -= 0.05;
+            if (feat.topRight === 0) dist += 0.20;
           }
 
           if (dist < minScore) {
@@ -531,7 +760,7 @@
       strokeBoxes.sort((a, b) => a.cx - b.cx);
 
       let bestSplitIdx = -1;
-      let maxGap = -Infinity;
+      let maxScore = -Infinity;
 
       for (let i = 0; i < strokeBoxes.length - 1; i += 1) {
         const leftMaxX = Math.max(...strokeBoxes.slice(0, i + 1).map((b) => b.maxX));
@@ -541,16 +770,16 @@
         const rightCx = strokeBoxes.slice(i + 1).reduce((sum, b) => sum + b.cx, 0) / (strokeBoxes.length - i - 1);
         const centerDist = rightCx - leftCx;
 
-        if (gap > 0 || (gap > -0.25 * totalW && centerDist > 0.32 * totalW)) {
-          const score = gap + centerDist * 0.45;
-          if (score > maxGap) {
-            maxGap = score;
+        if (gap > 0 || (gap > -0.20 * totalW && centerDist > 0.35 * totalW)) {
+          const score = gap + centerDist * 0.50;
+          if (score > maxScore) {
+            maxScore = score;
             bestSplitIdx = i;
           }
         }
       }
 
-      if (bestSplitIdx !== -1 && maxGap > 0.04 * totalW) {
+      if (bestSplitIdx !== -1 && maxScore > 0.05 * totalW) {
         const leftStrokes = strokeBoxes.slice(0, bestSplitIdx + 1).map((b) => b.stroke);
         const rightStrokes = strokeBoxes.slice(bestSplitIdx + 1).map((b) => b.stroke);
         return [leftStrokes, rightStrokes];
@@ -563,7 +792,7 @@
       if (!strokes || strokes.length === 0) return null;
 
       const validStrokes = strokes.filter((s) => {
-        if (s.length < 2) return false;
+        if (!s || s.length < 2) return false;
         let len = 0;
         for (let i = 0; i < s.length - 1; i += 1) {
           len += Math.hypot(s[i + 1].x - s[i].x, s[i + 1].y - s[i].y);
@@ -576,16 +805,13 @@
       const clusters = clusterStrokes(validStrokes);
 
       if (clusters.length === 1) {
-        const flatPts = clusters[0].flat();
-        const digit = recognizeSingleDigit(flatPts);
+        const digit = recognizeSingleDigitFromStrokes(clusters[0]);
         return digit !== null ? String(digit) : null;
       }
 
       if (clusters.length >= 2) {
-        const leftPts = clusters[0].flat();
-        const rightPts = clusters[1].flat();
-        const d1 = recognizeSingleDigit(leftPts);
-        const d2 = recognizeSingleDigit(rightPts);
+        const d1 = recognizeSingleDigitFromStrokes(clusters[0]);
+        const d2 = recognizeSingleDigitFromStrokes(clusters[1]);
         if (d1 !== null && d2 !== null) {
           return `${d1}${d2}`;
         }
