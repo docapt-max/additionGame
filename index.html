@@ -136,11 +136,18 @@
             </div>
           </div>
 
-          <!-- Canvas Surface: Wide writing area with zero buttons below -->
+          <!-- Canvas Surface: Divided 2-Box Writing Area -->
           <div class="canvas-container">
             <canvas id="writeCanvas" class="write-canvas"></canvas>
             <div class="canvas-guideline" aria-hidden="true"></div>
-            <div id="canvasPlaceholder" class="canvas-placeholder">Write your number here with finger or Pencil</div>
+            <!-- Faint Dotted Dividing Line between the two boxes -->
+            <div class="canvas-divider" aria-hidden="true"></div>
+            <!-- Box Labels (Left Box: 1st Digit, Right Box: 2nd Digit) -->
+            <div class="canvas-box-labels" aria-hidden="true">
+              <span class="box-label box-label--left">1st Digit</span>
+              <span class="box-label box-label--right">2nd Digit</span>
+            </div>
+            <div id="canvasPlaceholder" class="canvas-placeholder">Write 1st digit on left • 2nd digit on right (if needed)</div>
           </div>
 
           <!-- Palm Guard Notice -->
@@ -203,6 +210,13 @@
   <!-- Celebration Particle Layer -->
   <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
 
+  <script src="tf.min.js"></script>
+  <script>
+    if (typeof tf === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"><\/script>');
+    }
+  </script>
+  <script src="model/mnist_embedded.js"></script>
   <script src="game.js"></script>
 </body>
 

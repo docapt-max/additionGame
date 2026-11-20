@@ -236,7 +236,222 @@
   }
 
   // =========================================================
-  // Handwriting Digit Recognition Engine ($P+ Point-Cloud & Topology)
+  // TensorFlow.js + MNIST CNN Digit Recognition Engine
+  // =========================================================
+  const mnistCNN = (() => {
+    let model = null;
+    let isReady = false;
+    let isLoading = false;
+
+    // Dedicated offscreen canvas for rendering strokes into 28x28 MNIST format
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = 28;
+    offCanvas.height = 28;
+    const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+    async function init() {
+      if (isReady || isLoading) return;
+      isLoading = true;
+
+      if (typeof tf === 'undefined') {
+        console.warn('TensorFlow.js not available, using fallback recognizer');
+        isLoading = false;
+        return;
+      }
+
+      try {
+        await tf.ready();
+
+        // 1. First try loading from memory (instant, 0 network, works on file:// and offline PWA)
+        if (window.MNIST_MODEL_JSON && window.MNIST_WEIGHTS_BASE64) {
+          try {
+            const binStr = window.atob(window.MNIST_WEIGHTS_BASE64);
+            const len = binStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i += 1) {
+              bytes[i] = binStr.charCodeAt(i);
+            }
+            const memoryHandler = {
+              load: async () => ({
+                modelTopology: window.MNIST_MODEL_JSON.modelTopology,
+                weightsManifest: window.MNIST_MODEL_JSON.weightsManifest,
+                weightSpecs: window.MNIST_MODEL_JSON.weightsManifest[0].weights,
+                weightData: bytes.buffer,
+                format: window.MNIST_MODEL_JSON.format || 'layers-model',
+              }),
+            };
+            model = await tf.loadLayersModel(memoryHandler);
+            isReady = true;
+          } catch (memErr) {
+            console.warn('Memory model load fallback:', memErr);
+          }
+        }
+
+        // 2. Fallback to fetching ./model/model.json
+        if (!model) {
+          model = await tf.loadLayersModel('./model/model.json');
+          isReady = true;
+        }
+
+        // 3. Warm up model with dummy tensor
+        if (model) {
+          tf.tidy(() => {
+            const dummy = tf.zeros([1, 28, 28, 1]);
+            model.predict(dummy);
+          });
+        }
+      } catch (err) {
+        console.error('MNIST CNN initialization error:', err);
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    function isAvailable() {
+      return isReady && model !== null;
+    }
+
+    function strokesTo28x28(strokes) {
+      if (!strokes || strokes.length === 0) return null;
+
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      let totalPts = 0;
+
+      for (const stroke of strokes) {
+        for (const p of stroke) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+          totalPts += 1;
+        }
+      }
+      if (totalPts < 2) return null;
+
+      const w = maxX - minX;
+      const h = maxY - minY;
+      if (w < 4 && h < 4) return null;
+
+      // Draw onto black 28x28 canvas
+      offCtx.fillStyle = '#000000';
+      offCtx.fillRect(0, 0, 28, 28);
+
+      // Scale digit so maximum dimension fits in 20px (MNIST bounding box spec)
+      const maxDim = Math.max(w, h, 1);
+      const scale = 20.0 / maxDim;
+      const scaledW = w * scale;
+      const scaledH = h * scale;
+
+      const dx = (28 - scaledW) / 2 - minX * scale;
+      const dy = (28 - scaledH) / 2 - minY * scale;
+
+      offCtx.strokeStyle = '#ffffff';
+      offCtx.lineWidth = 2.4;
+      offCtx.lineCap = 'round';
+      offCtx.lineJoin = 'round';
+
+      for (const stroke of strokes) {
+        if (stroke.length < 2) {
+          if (stroke.length === 1) {
+            offCtx.beginPath();
+            offCtx.arc(stroke[0].x * scale + dx, stroke[0].y * scale + dy, 1.2, 0, Math.PI * 2);
+            offCtx.fillStyle = '#ffffff';
+            offCtx.fill();
+          }
+          continue;
+        }
+        offCtx.beginPath();
+        offCtx.moveTo(stroke[0].x * scale + dx, stroke[0].y * scale + dy);
+        for (let i = 1; i < stroke.length; i += 1) {
+          offCtx.lineTo(stroke[i].x * scale + dx, stroke[i].y * scale + dy);
+        }
+        offCtx.stroke();
+      }
+
+      // Center of mass adjustment to match MNIST training distribution
+      const imgData = offCtx.getImageData(0, 0, 28, 28);
+      const data = imgData.data;
+      let totalMass = 0;
+      let massX = 0;
+      let massY = 0;
+
+      for (let y = 0; y < 28; y += 1) {
+        for (let x = 0; x < 28; x += 1) {
+          const val = data[(y * 28 + x) * 4];
+          if (val > 10) {
+            totalMass += val;
+            massX += x * val;
+            massY += y * val;
+          }
+        }
+      }
+
+      if (totalMass > 0) {
+        const comX = massX / totalMass;
+        const comY = massY / totalMass;
+        const shiftX = Math.round(14 - comX);
+        const shiftY = Math.round(14 - comY);
+
+        if ((shiftX !== 0 || shiftY !== 0) && Math.abs(shiftX) <= 3 && Math.abs(shiftY) <= 3) {
+          const shiftedCanvas = document.createElement('canvas');
+          shiftedCanvas.width = 28;
+          shiftedCanvas.height = 28;
+          const sCtx = shiftedCanvas.getContext('2d');
+          sCtx.fillStyle = '#000000';
+          sCtx.fillRect(0, 0, 28, 28);
+          sCtx.drawImage(offCanvas, shiftX, shiftY);
+          const shiftedData = sCtx.getImageData(0, 0, 28, 28).data;
+          const floatArr = new Float32Array(28 * 28);
+          for (let i = 0; i < 28 * 28; i += 1) {
+            floatArr[i] = shiftedData[i * 4] / 255.0;
+          }
+          return floatArr;
+        }
+      }
+
+      const floatArr = new Float32Array(28 * 28);
+      for (let i = 0; i < 28 * 28; i += 1) {
+        floatArr[i] = data[i * 4] / 255.0;
+      }
+      return floatArr;
+    }
+
+    function predictDigit(strokes) {
+      if (!isAvailable()) return null;
+      const floatData = strokesTo28x28(strokes);
+      if (!floatData) return null;
+
+      return tf.tidy(() => {
+        const tensor = tf.tensor4d(floatData, [1, 28, 28, 1]);
+        const output = model.predict(tensor);
+        const probs = output.dataSync();
+        let bestIdx = 0;
+        let bestProb = probs[0];
+        for (let i = 1; i < 10; i += 1) {
+          if (probs[i] > bestProb) {
+            bestProb = probs[i];
+            bestIdx = i;
+          }
+        }
+        // Confidence threshold: reject ambiguous scribbles
+        if (bestProb < 0.40) return null;
+        return { digit: bestIdx, confidence: bestProb };
+      });
+    }
+
+    return {
+      init,
+      isAvailable,
+      predictDigit,
+      strokesTo28x28,
+    };
+  })();
+
+  // =========================================================
+  // Handwriting Digit Recognition Engine ($P+ Point-Cloud & Topology Fallback)
   // =========================================================
   const recognizer = (() => {
     function ls(a, b, n) {
@@ -1174,14 +1389,97 @@
 
   function evaluateHandwriting() {
     if (!isInputPhase()) return;
-    const recognized = recognizer.recognizeStrokes(canvasStrokes);
-    if (recognized !== null && recognized !== '') {
-      dom.recognizedValue.textContent = recognized;
-      state.typedAnswer = recognized;
+
+    if (canvasStrokes.length === 0) {
+      dom.recognizedValue.textContent = '—';
+      state.typedAnswer = '';
+      renderStage();
+      return;
+    }
+
+    // 1. Divide canvas at center divider (midX)
+    const midX = cssCanvasWidth / 2;
+    const leftStrokes = [];
+    const rightStrokes = [];
+
+    for (const stroke of canvasStrokes) {
+      if (!stroke || stroke.length === 0) continue;
+      let sMinX = Infinity;
+      let sMaxX = -Infinity;
+      let sMinY = Infinity;
+      let sMaxY = -Infinity;
+      for (const p of stroke) {
+        if (p.x < sMinX) sMinX = p.x;
+        if (p.x > sMaxX) sMaxX = p.x;
+        if (p.y < sMinY) sMinY = p.y;
+        if (p.y > sMaxY) sMaxY = p.y;
+      }
+      // Palm rejection: ignore accidental tiny touch dots (< 5px)
+      if (stroke.length < 2 && (sMaxX - sMinX) < 4 && (sMaxY - sMinY) < 4) {
+        continue;
+      }
+      const strokeCenterX = (sMinX + sMaxX) / 2;
+      if (strokeCenterX < midX) {
+        leftStrokes.push(stroke);
+      } else {
+        rightStrokes.push(stroke);
+      }
+    }
+
+    const leftHasStrokes = leftStrokes.length > 0;
+    const rightHasStrokes = rightStrokes.length > 0;
+
+    if (!leftHasStrokes && !rightHasStrokes) {
+      dom.recognizedValue.textContent = '—';
+      state.typedAnswer = '';
+      renderStage();
+      return;
+    }
+
+    // 2. Predict digit for each box
+    function recognizeBox(strokes) {
+      if (!strokes || strokes.length === 0) return null;
+      if (mnistCNN.isAvailable()) {
+        const res = mnistCNN.predictDigit(strokes);
+        if (res !== null) return res.digit;
+      }
+      // Fallback to geometric point-cloud recognizer
+      return recognizer.recognizeStrokes(strokes);
+    }
+
+    const leftDigit = leftHasStrokes ? recognizeBox(leftStrokes) : null;
+    const rightDigit = rightHasStrokes ? recognizeBox(rightStrokes) : null;
+
+    // 3. User rule: "if the right box is left impty we will take the left box as a single digit number"
+    let finalAnswer = '';
+
+    if (leftHasStrokes && !rightHasStrokes) {
+      if (leftDigit !== null) {
+        finalAnswer = String(leftDigit);
+      }
+    } else if (!leftHasStrokes && rightHasStrokes) {
+      if (rightDigit !== null) {
+        finalAnswer = String(rightDigit);
+      }
+    } else if (leftHasStrokes && rightHasStrokes) {
+      // Both boxes written: 2-digit number (Tens in left box + Ones in right box)
+      if (leftDigit !== null && rightDigit !== null) {
+        finalAnswer = `${leftDigit}${rightDigit}`;
+      } else if (leftDigit !== null) {
+        finalAnswer = String(leftDigit);
+      } else if (rightDigit !== null) {
+        finalAnswer = String(rightDigit);
+      }
+    }
+
+    if (finalAnswer !== '') {
+      dom.recognizedValue.textContent = finalAnswer;
+      state.typedAnswer = finalAnswer;
     } else {
       dom.recognizedValue.textContent = '—';
       state.typedAnswer = '';
     }
+
     renderStage();
   }
 
@@ -1684,6 +1982,7 @@
 
   // Initialize
   initCanvas();
+  mnistCNN.init();
   updateSoundUI();
   setInputMode('write');
   startNewGame();
