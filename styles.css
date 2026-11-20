@@ -499,13 +499,19 @@ button {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: min(620px, 94vw);
+  max-width: min(780px, 94vw);
   background: var(--surface-soft);
   border: 2px solid var(--border);
   border-radius: 24px;
-  padding: 12px 18px 10px;
+  padding: 12px 18px 12px;
   gap: 10px;
   box-shadow: 0 10px 30px -10px rgba(2, 6, 23, 0.65);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.drawing-panel--nudge {
+  border-color: var(--warn-border);
+  animation: gentleShake 0.42s ease;
 }
 
 /* Top Header Bar: Placed strictly ABOVE canvas away from palm */
@@ -618,11 +624,11 @@ button {
   stroke-linejoin: round;
 }
 
-/* Canvas Container (Large Divided Surface) */
+/* Canvas Container (Expanded Large Divided Surface) */
 .canvas-container {
   position: relative;
   width: 100%;
-  height: clamp(230px, 36vh, 340px);
+  height: clamp(260px, 40vh, 380px);
   background: #0f172a;
   border: 2px solid #334155;
   border-radius: 18px;
@@ -1124,74 +1130,50 @@ button {
   }
 
   .stage-card {
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: clamp(16px, 2.5vw, 36px);
-    padding: clamp(12px, 1.8vh, 22px) clamp(18px, 2.6vw, 36px);
+    justify-content: center;
+    gap: clamp(8px, 1.4vh, 16px);
+    padding: clamp(10px, 1.5vh, 20px) clamp(16px, 2.4vw, 32px);
     overflow: visible;
   }
 
   .stage-equation-pane {
-    flex: 1;
-    min-width: 0;
-    gap: clamp(8px, 1.4vh, 16px);
+    width: 100%;
+    flex: 0 0 auto;
+    gap: clamp(6px, 1vh, 12px);
   }
 
   .equation-area {
-    gap: clamp(10px, 1.8vw, 22px);
+    gap: clamp(12px, 2vw, 24px);
+    padding: clamp(2px, 0.6vh, 8px) 0;
   }
 
   .number-card {
-    width: clamp(114px, 12.5vw, 156px);
-    min-height: clamp(120px, 18vh, 168px);
+    width: clamp(96px, 12vw, 140px);
+    min-height: clamp(95px, 14vh, 132px);
   }
 
-  .answer-card {
-    width: clamp(108px, 11.8vw, 148px);
-    min-height: clamp(120px, 18vh, 168px);
-  }
-
-  .number-digit,
-  .answer-text {
-    font-size: clamp(3.4rem, 5vw, 4.8rem);
+  .number-digit {
+    font-size: clamp(3.2rem, 5.2vw, 4.4rem);
   }
 
   .controls-bar {
-    width: clamp(290px, 28vw, 360px);
+    width: 100%;
+    max-width: min(780px, 94vw);
     flex: 0 0 auto;
     align-items: center;
   }
 
   .drawing-panel {
-    max-width: none;
+    max-width: min(780px, 94vw);
     width: 100%;
-    padding: 10px 14px 8px;
+    padding: 10px 16px 10px;
     gap: 8px;
   }
 
   .canvas-container {
-    height: clamp(170px, 27vh, 225px);
-  }
-
-  .numpad {
-    width: 100%;
-    max-width: none;
-    gap: clamp(8px, 1.2vh, 11px);
-  }
-
-  .numpad-btn {
-    height: clamp(48px, 7vh, 60px);
-    border-radius: 16px;
-    font-size: clamp(1.35rem, 1.8vw, 1.55rem);
-  }
-
-  .numpad-btn--backspace {
-    font-size: clamp(1.25rem, 1.6vw, 1.42rem);
-  }
-
-  .numpad-btn--submit {
-    font-size: clamp(1rem, 1.2vw, 1.1rem);
+    height: clamp(260px, 40vh, 380px);
   }
 
   .controls-footer {

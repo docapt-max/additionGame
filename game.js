@@ -1261,7 +1261,7 @@
       dom.canvasPlaceholder.classList.add('is-hidden');
 
       canvasCtx.beginPath();
-      canvasCtx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+      canvasCtx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2);
       canvasCtx.fillStyle = '#38bdf8';
       canvasCtx.fill();
     });
@@ -1282,7 +1282,7 @@
 
         canvasCtx.beginPath();
         canvasCtx.strokeStyle = '#38bdf8';
-        canvasCtx.lineWidth = 7.5;
+        canvasCtx.lineWidth = 8.5;
         canvasCtx.lineCap = 'round';
         canvasCtx.lineJoin = 'round';
         canvasCtx.shadowColor = 'rgba(56, 189, 248, 0.45)';
@@ -1374,7 +1374,7 @@
     dom.canvasPlaceholder.classList.remove('is-hidden');
     dom.recognizedValue.textContent = '—';
     state.typedAnswer = '';
-    dom.answerText.textContent = '';
+    if (dom.answerText) dom.answerText.textContent = '';
     renderStage();
   }
 
@@ -1525,16 +1525,18 @@
     applyCardAppearance(dom.leftCard, dom.leftDigit, leftVal, leftTheme);
     applyCardAppearance(dom.rightCard, dom.rightDigit, rightVal, rightTheme);
 
-    dom.answerCard.classList.remove('answer-card--correct', 'answer-card--wrong', 'answer-card--typing');
+    if (dom.answerCard) {
+      dom.answerCard.classList.remove('answer-card--correct', 'answer-card--wrong', 'answer-card--typing');
 
-    if (round.result !== null) {
-      dom.answerText.textContent = String(round.sum);
-      dom.answerCard.classList.add(round.result === 'tick' ? 'answer-card--correct' : 'answer-card--wrong');
-    } else if (state.typedAnswer !== '') {
-      dom.answerText.textContent = state.typedAnswer;
-      dom.answerCard.classList.add('answer-card--typing');
-    } else {
-      dom.answerText.textContent = '';
+      if (round.result !== null) {
+        if (dom.answerText) dom.answerText.textContent = String(round.sum);
+        dom.answerCard.classList.add(round.result === 'tick' ? 'answer-card--correct' : 'answer-card--wrong');
+      } else if (state.typedAnswer !== '') {
+        if (dom.answerText) dom.answerText.textContent = state.typedAnswer;
+        dom.answerCard.classList.add('answer-card--typing');
+      } else {
+        if (dom.answerText) dom.answerText.textContent = '';
+      }
     }
 
     const canType = isInputPhase();
@@ -1557,15 +1559,18 @@
   }
 
   function nudgeAnswerRequired() {
-    dom.answerCard.classList.remove('answer-card--nudge');
-    void dom.answerCard.offsetWidth;
-    dom.answerCard.classList.add('answer-card--nudge');
+    const target = dom.answerCard || dom.drawPanel;
+    if (!target) return;
+    target.classList.remove('answer-card--nudge', 'drawing-panel--nudge');
+    void target.offsetWidth;
+    target.classList.add(dom.answerCard ? 'answer-card--nudge' : 'drawing-panel--nudge');
   }
 
   // --- Celebration Confetti & Smileys ---
   function spawnConfetti(showSmiley = false) {
     const colors = ['#2563eb', '#ea580c', '#16a34a', '#f59e0b', '#6366f1', '#ec4899'];
-    const rect = dom.answerCard.getBoundingClientRect();
+    const anchor = dom.answerCard || dom.canvasSubmitBtn || dom.drawPanel;
+    const rect = anchor ? anchor.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const originX = rect.left + rect.width / 2;
     const originY = rect.top + rect.height / 2;
 
@@ -1625,7 +1630,8 @@
   }
 
   function spawnSadSmiley() {
-    const rect = dom.answerCard.getBoundingClientRect();
+    const anchor = dom.answerCard || dom.drawPanel || dom.canvasSubmitBtn;
+    const rect = anchor ? anchor.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const originX = rect.left + rect.width / 2;
     const originY = rect.top + rect.height / 2;
 
@@ -1809,7 +1815,8 @@
     dom.leftCard.style.zIndex = '';
     dom.rightCard.style.zIndex = '';
     dom.plusSymbol.classList.remove('operator-symbol--pulse');
-    dom.answerCard.classList.remove('answer-card--nudge');
+    if (dom.answerCard) dom.answerCard.classList.remove('answer-card--nudge');
+    if (dom.drawPanel) dom.drawPanel.classList.remove('drawing-panel--nudge');
     dom.confettiLayer.innerHTML = '';
 
     state.rounds = generateRounds(TOTAL_ROUNDS);
