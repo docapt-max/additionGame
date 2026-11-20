@@ -401,15 +401,15 @@ button {
 
 .answer-card {
   width: clamp(96px, 14vw, 154px);
-  min-height: clamp(110px, 16.5vh, 164px);
+  min-height: clamp(100px, 15vh, 154px);
   border-radius: 24px;
-  border: 3.5px dashed #334155;
-  background: var(--surface-soft);
-  color: var(--muted);
+  border: 3.5px dashed rgba(51, 65, 85, 0.4);
+  background: rgba(30, 41, 59, 0.35);
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
@@ -422,7 +422,7 @@ button {
 .answer-card--typing {
   border-style: solid;
   border-color: var(--accent);
-  background: rgba(99, 102, 241, 0.14);
+  background: rgba(99, 102, 241, 0.16);
   color: var(--ink);
   box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.2);
 }
@@ -482,7 +482,7 @@ button {
   border: 1.5px solid var(--warn-border);
 }
 
-/* Controls Bar (Handwriting & Keypad) */
+/* Controls Bar (Handwriting Only) */
 .controls-bar {
   display: flex;
   flex-direction: column;
@@ -492,54 +492,20 @@ button {
   width: 100%;
 }
 
-/* Input Mode Switch (Write vs Keypad) */
-.input-mode-switch {
-  display: inline-flex;
-  background: var(--surface-soft);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  padding: 3px;
-  gap: 4px;
-}
-
-.mode-btn {
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  padding: 5px 14px;
-  border-radius: 9px;
-  font-family: inherit;
-  font-weight: 800;
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.mode-btn:active {
-  transform: scale(0.96);
-}
-
-.mode-btn--active {
-  background: var(--surface);
-  color: var(--ink);
-  border-color: var(--border);
-  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.35);
-}
-
 /* =========================================================
-   Handwriting Canvas Panel (Palm-Safe)
+   Handwriting Canvas Panel (Large & Palm-Safe)
    ========================================================= */
 .drawing-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 400px;
+  max-width: min(620px, 94vw);
   background: var(--surface-soft);
   border: 2px solid var(--border);
-  border-radius: 22px;
-  padding: 10px 14px 8px;
-  gap: 8px;
-  box-shadow: 0 8px 24px -10px rgba(2, 6, 23, 0.55);
+  border-radius: 24px;
+  padding: 12px 18px 10px;
+  gap: 10px;
+  box-shadow: 0 10px 30px -10px rgba(2, 6, 23, 0.65);
 }
 
 /* Top Header Bar: Placed strictly ABOVE canvas away from palm */
@@ -652,14 +618,14 @@ button {
   stroke-linejoin: round;
 }
 
-/* Canvas Container */
+/* Canvas Container (Large Divided Surface) */
 .canvas-container {
   position: relative;
   width: 100%;
-  height: clamp(170px, 26vh, 220px);
+  height: clamp(230px, 36vh, 340px);
   background: #0f172a;
   border: 2px solid #334155;
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
   touch-action: none;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);

@@ -53,10 +53,6 @@
     answerText: document.getElementById('answerText'),
     feedbackBanner: document.getElementById('feedbackBanner'),
 
-    // Mode Switch
-    modeWriteBtn: document.getElementById('modeWriteBtn'),
-    modePadBtn: document.getElementById('modePadBtn'),
-
     // Handwriting Canvas
     drawPanel: document.getElementById('drawPanel'),
     writeCanvas: document.getElementById('writeCanvas'),
@@ -64,12 +60,6 @@
     clearCanvasBtn: document.getElementById('clearCanvasBtn'),
     recognizedValue: document.getElementById('recognizedValue'),
     canvasSubmitBtn: document.getElementById('canvasSubmitBtn'),
-
-    // Number Pad
-    numpad: document.getElementById('numpad'),
-    digitButtons: Array.from(document.querySelectorAll('[data-digit]')),
-    backspaceBtn: document.getElementById('backspaceBtn'),
-    submitBtn: document.getElementById('submitBtn'),
 
     summaryOverlay: document.getElementById('summaryOverlay'),
     summaryTitle: document.getElementById('summaryTitle'),
@@ -1292,7 +1282,7 @@
 
         canvasCtx.beginPath();
         canvasCtx.strokeStyle = '#38bdf8';
-        canvasCtx.lineWidth = 6;
+        canvasCtx.lineWidth = 7.5;
         canvasCtx.lineCap = 'round';
         canvasCtx.lineJoin = 'round';
         canvasCtx.shadowColor = 'rgba(56, 189, 248, 0.45)';
@@ -1358,7 +1348,7 @@
     dom.canvasPlaceholder.classList.add('is-hidden');
 
     canvasCtx.strokeStyle = '#38bdf8';
-    canvasCtx.lineWidth = 6;
+    canvasCtx.lineWidth = 7.5;
     canvasCtx.lineCap = 'round';
     canvasCtx.lineJoin = 'round';
     canvasCtx.shadowColor = 'rgba(56, 189, 248, 0.45)';
@@ -1384,6 +1374,7 @@
     dom.canvasPlaceholder.classList.remove('is-hidden');
     dom.recognizedValue.textContent = '—';
     state.typedAnswer = '';
+    dom.answerText.textContent = '';
     renderStage();
   }
 
@@ -1543,16 +1534,12 @@
       dom.answerText.textContent = state.typedAnswer;
       dom.answerCard.classList.add('answer-card--typing');
     } else {
-      dom.answerText.textContent = '?';
+      dom.answerText.textContent = '';
     }
 
     const canType = isInputPhase();
-    dom.numpad.classList.toggle('numpad--locked', !canType);
-    dom.digitButtons.forEach((btn) => { btn.disabled = !canType; });
-    dom.backspaceBtn.disabled = !canType;
-    dom.submitBtn.disabled = !canType;
-    dom.canvasSubmitBtn.disabled = !canType;
-    dom.clearCanvasBtn.disabled = !canType;
+    if (dom.canvasSubmitBtn) dom.canvasSubmitBtn.disabled = !canType;
+    if (dom.clearCanvasBtn) dom.clearCanvasBtn.disabled = !canType;
 
     dom.feedbackBanner.classList.add('is-hidden');
     dom.feedbackBanner.classList.remove('feedback-banner--correct', 'feedback-banner--wrong');
@@ -1886,38 +1873,11 @@
     }
   }
 
-  // --- Mode Switching (Handwriting vs Keypad) ---
-  function setInputMode(mode) {
-    state.inputMode = mode;
-    const isWrite = mode === 'write';
-
-    dom.modeWriteBtn.classList.toggle('mode-btn--active', isWrite);
-    dom.modeWriteBtn.setAttribute('aria-selected', String(isWrite));
-
-    dom.modePadBtn.classList.toggle('mode-btn--active', !isWrite);
-    dom.modePadBtn.setAttribute('aria-selected', String(!isWrite));
-
-    dom.drawPanel.classList.toggle('is-hidden', !isWrite);
-    dom.numpad.classList.toggle('is-hidden', isWrite);
-
-    if (isWrite) {
-      setTimeout(() => resizeCanvas(), 50);
-    }
-  }
-
-  // --- Keyboard Input (iPad Magic Keyboard & Desktop) ---
+  // --- Keyboard Input (iPad Magic Keyboard & Desktop Testing) ---
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
 
-    if (e.key >= '0' && e.key <= '9') {
-      e.preventDefault();
-      unlockAudio();
-      appendDigit(e.key);
-    } else if (e.key === 'Backspace') {
-      e.preventDefault();
-      unlockAudio();
-      handleBackspace();
-    } else if (e.key === 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault();
       unlockAudio();
       handleSubmit();
@@ -1965,16 +1925,8 @@
   }
 
   // Bind Buttons
-  dom.digitButtons.forEach((btn) => {
-    bindInstantTap(btn, () => appendDigit(btn.dataset.digit));
-  });
-  bindInstantTap(dom.backspaceBtn, () => handleBackspace());
-  bindInstantTap(dom.submitBtn, () => handleSubmit());
   bindInstantTap(dom.canvasSubmitBtn, () => handleSubmit());
-
   bindCleanClick(dom.clearCanvasBtn, () => clearCanvas());
-  bindCleanClick(dom.modeWriteBtn, () => setInputMode('write'));
-  bindCleanClick(dom.modePadBtn, () => setInputMode('keypad'));
 
   bindCleanClick(dom.soundBtn, () => toggleSound());
   bindCleanClick(dom.restartBtn, () => startNewGame());
@@ -1984,6 +1936,5 @@
   initCanvas();
   mnistCNN.init();
   updateSoundUI();
-  setInputMode('write');
   startNewGame();
 })();

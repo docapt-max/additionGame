@@ -84,7 +84,7 @@
           <div class="operator-symbol" aria-hidden="true">=</div>
 
           <div id="answerCard" class="answer-card">
-            <span id="answerText" class="answer-text">?</span>
+            <span id="answerText" class="answer-text"></span>
           </div>
         </div>
 
@@ -94,20 +94,8 @@
         </div>
       </div>
 
-      <!-- Controls Bar: Handwriting Canvas Box (Default) + Mode Switch -->
+      <!-- Controls Bar: Handwriting Canvas Box (Default) -->
       <div class="controls-bar">
-        <!-- Input Mode Switch -->
-        <div class="input-mode-switch" role="tablist" aria-label="Input Mode">
-          <button id="modeWriteBtn" class="mode-btn mode-btn--active" type="button" role="tab" aria-selected="true"
-            title="Write with finger or Pencil">
-            ✏️ Write
-          </button>
-          <button id="modePadBtn" class="mode-btn" type="button" role="tab" aria-selected="false"
-            title="Tap numbers on screen">
-            🔢 Keypad
-          </button>
-        </div>
-
         <!-- Handwriting Canvas Box (Palm-Safe Layout: buttons placed strictly ABOVE canvas) -->
         <div id="drawPanel" class="drawing-panel" role="region" aria-label="Handwriting canvas">
           <!-- Top Control Header: Safe from resting palm -->
@@ -154,24 +142,6 @@
           <div class="canvas-palm-guard" aria-hidden="true">
             <span></span>
           </div>
-        </div>
-
-        <!-- Number Pad Controls (Alternative View) -->
-        <div id="numpad" class="numpad is-hidden" role="group" aria-label="Number pad">
-          <button class="numpad-btn" type="button" data-digit="1">1</button>
-          <button class="numpad-btn" type="button" data-digit="2">2</button>
-          <button class="numpad-btn" type="button" data-digit="3">3</button>
-          <button class="numpad-btn" type="button" data-digit="4">4</button>
-          <button class="numpad-btn" type="button" data-digit="5">5</button>
-          <button class="numpad-btn" type="button" data-digit="6">6</button>
-          <button class="numpad-btn" type="button" data-digit="7">7</button>
-          <button class="numpad-btn" type="button" data-digit="8">8</button>
-          <button class="numpad-btn" type="button" data-digit="9">9</button>
-          <button id="backspaceBtn" class="numpad-btn numpad-btn--backspace" type="button" aria-label="Backspace"
-            title="Backspace">⌫</button>
-          <button class="numpad-btn" type="button" data-digit="0">0</button>
-          <button id="submitBtn" class="numpad-btn numpad-btn--submit" type="button" aria-label="Submit answer"
-            title="Submit">Submit</button>
         </div>
       </div>
     </main>
