@@ -126,12 +126,7 @@
             <div class="canvas-guideline" aria-hidden="true"></div>
             <!-- Faint Dotted Dividing Line between the two boxes -->
             <div class="canvas-divider" aria-hidden="true"></div>
-            <!-- Box Labels (Left Box: 1st Digit, Right Box: 2nd Digit) -->
-            <div class="canvas-box-labels" aria-hidden="true">
-              <span class="box-label box-label--left">1st Digit</span>
-              <span class="box-label box-label--right">2nd Digit</span>
-            </div>
-            <div id="canvasPlaceholder" class="canvas-placeholder">Write 1st digit on left • 2nd digit on right (if needed)</div>
+            <div id="canvasPlaceholder" class="canvas-placeholder"></div>
           </div>
 
           <!-- Palm Guard Notice -->
@@ -141,49 +136,42 @@
         </div>
       </div>
     </main>
-
-    <!-- Control Reference Footer -->
-    <footer class="controls-footer">
-      <span><strong>Step 1:</strong> Write answer &amp; tap <strong>Check</strong> above</span>
-      <span class="footer-sep" aria-hidden="true">•</span>
-      <span><strong>Step 2:</strong> Write swapped answer &amp; tap <strong>Check</strong></span>
-    </footer>
   </div>
 
   <!-- End of 10 Rounds Summary Modal -->
-  <div id="summaryOverlay" class="summary-overlay is-hidden" role="dialog" aria-modal="true"
-    aria-labelledby="summaryTitle">
-    <div class="summary-modal">
-      <div class="summary-trophy" aria-hidden="true">★</div>
-      <h2 id="summaryTitle" class="summary-title">Great Job!</h2>
-      <p id="summarySubtitle" class="summary-subtitle">You completed all 10 rounds!</p>
+    <div id="summaryOverlay" class="summary-overlay is-hidden" role="dialog" aria-modal="true"
+      aria-labelledby="summaryTitle">
+      <div class="summary-modal">
+        <div class="summary-trophy" aria-hidden="true">★</div>
+        <h2 id="summaryTitle" class="summary-title">Great Job!</h2>
+        <p id="summarySubtitle" class="summary-subtitle">You completed all 10 rounds!</p>
 
-      <div class="summary-score-box">
-        <span id="summaryScoreNumber" class="summary-score-number">0 / 10</span>
-        <span class="summary-score-caption">Order doesn't change the sum: <strong>x + y = y + x</strong></span>
+        <div class="summary-score-box">
+          <span id="summaryScoreNumber" class="summary-score-number">0 / 10</span>
+          <span class="summary-score-caption">Order doesn't change the sum: <strong>x + y = y + x</strong></span>
+        </div>
+
+        <ul id="summaryList" class="summary-list">
+          <!-- 10 round recap items populated by game.js -->
+        </ul>
+
+        <button id="playAgainBtn" class="action-btn action-btn--swap summary-play-btn" type="button">
+          <span>Play Another 10 Rounds</span>
+        </button>
       </div>
-
-      <ul id="summaryList" class="summary-list">
-        <!-- 10 round recap items populated by game.js -->
-      </ul>
-
-      <button id="playAgainBtn" class="action-btn action-btn--swap summary-play-btn" type="button">
-        <span>Play Another 10 Rounds</span>
-      </button>
     </div>
-  </div>
 
-  <!-- Celebration Particle Layer -->
-  <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
+    <!-- Celebration Particle Layer -->
+    <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
 
-  <script src="tf.min.js"></script>
-  <script>
-    if (typeof tf === 'undefined') {
-      document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"><\/script>');
-    }
-  </script>
-  <script src="model/mnist_embedded.js"></script>
-  <script src="game.js"></script>
+    <script src="tf.min.js"></script>
+    <script>
+      if (typeof tf === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"><\/script>');
+      }
+    </script>
+    <script src="model/mnist_embedded.js"></script>
+    <script src="game.js"></script>
 </body>
 
 </html>
